@@ -53,7 +53,21 @@ jobs:
         run: echo "ANDROID_HOME=$ANDROID_HOME" && ls $ANDROID_HOME/platforms
 
       - name: Build release APK
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease --no-daemon 2>&1 | tee build.log
+
+      - name: Push build log on failure
+        if: failure()
+        run: |
+          grep -E "^e: |error:|What went wrong|Duplicate class|FAILURE|Caused by" -A4 build.log | head -150 > build-errors.txt || true
+          tail -80 build.log >> build-errors.txt
+          git config user.name "ci"; git config user.email "ci@users.noreply.github.com"
+          git checkout --orphan ci-logs
+          git rm -rfq --cached . >/dev/null
+          git add -f build-errors.txt
+          git commit -qm "build log ${{ github.run_number }}"
+          git push -f origin ci-logs
 
       - name: Rename APK
         run: mv app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/BgRemover.apk && ls -la app/build/outputs/apk/release/
