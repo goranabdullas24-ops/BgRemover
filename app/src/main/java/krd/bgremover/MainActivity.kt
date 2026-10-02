@@ -294,7 +294,7 @@ fun App(vm: MainViewModel = viewModel()) {
             }
             if (vm.results.isNotEmpty()) {
                 val title = if (vm.selectMode) "${vm.selected.size} وێنە هەڵبژێردراوە"
-                            else "${vm.results.size} وێنە دۆزرایەوە — دەستێک بۆ یەکێک، ڕاگرتن بۆ چەندان"
+                            else "${vm.results.size} وێنە — ✨ لابردنی باکگراوند، ⬇ داگرتن، ڕاگرتن بۆ چەندان"
                 SectionCard(title) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -354,6 +354,24 @@ fun App(vm: MainViewModel = viewModel()) {
                                                 .background(Color(0x99000000), RoundedCornerShape(4.dp))
                                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                                         )
+                                    }
+                                    if (!vm.selectMode) {
+                                        // ئایکۆنەکانی سەر هەر وێنەیەک
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                                            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
+                                        ) {
+                                            TileIcon(
+                                                icon = Icons.Default.AutoFixHigh,
+                                                label = "لابردنی باکگراوند",
+                                                enabled = vm.busy == null
+                                            ) { vm.removeOne(item) }
+                                            TileIcon(
+                                                icon = Icons.Default.Download,
+                                                label = "داگرتن",
+                                                loading = item.fullUrl in vm.downloading
+                                            ) { vm.downloadOne(item) }
+                                        }
                                     }
                                     if (vm.selectMode) {
                                         Icon(
@@ -484,6 +502,31 @@ private fun BatchSection(vm: MainViewModel, scope: kotlinx.coroutines.CoroutineS
             }
             Spacer(Modifier.weight(1f))
             TextButton(onClick = vm::clearBatch) { Text("سڕینەوەی لیست") }
+        }
+    }
+}
+
+/** ئایکۆنی بچووکی بازنەیی لەسەر وێنە. */
+@Composable
+private fun TileIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    enabled: Boolean = true,
+    loading: Boolean = false,
+    onClick: () -> Unit
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(Color(0xB3000000))
+            .clickable(enabled = enabled && !loading, onClick = onClick)
+    ) {
+        if (loading) {
+            CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+        } else {
+            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(20.dp))
         }
     }
 }

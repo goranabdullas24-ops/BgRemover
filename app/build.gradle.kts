@@ -12,8 +12,8 @@ android {
         applicationId = "krd.bgremover"
         minSdk = 29
         targetSdk = 35
-        versionCode = 13
-        versionName = "4.1"
+        versionCode = 14
+        versionName = "4.2"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
         // کلیلی Serper ی هاوبەش بۆ هەموو مۆبایلەکان (لە GitHub Secret ـەوە، نەک لە کۆدەکەدا)
         buildConfigField("String", "DEFAULT_SERPER_KEY", "\"${System.getenv("SERPER_KEY") ?: ""}\"")

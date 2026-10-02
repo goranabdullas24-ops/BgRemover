@@ -277,6 +277,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** URL ی ئەو وێنانەی ئێستا دادەبەزن (بۆ پیشاندانی بازنەی چاوەڕێ لەسەر ئایکۆنەکە). */
+    var downloading by mutableStateOf<Set<String>>(emptySet())
+        private set
+
+    /** ئایکۆنی داگرتن لەسەر وێنەیەک: بە قەبارە و کوالیتی ئەسڵی، بێ لابردنی باکگراوند. */
+    fun downloadOne(r: ImageResult) {
+        if (r.fullUrl in downloading) return
+        downloading = downloading + r.fullUrl
+        viewModelScope.launch {
+            val ok = try { saveRaw(r.fullUrl, r.thumbUrl) } finally { downloading = downloading - r.fullUrl }
+            message = if (ok) "دابەزی › Pictures/BgRemover/Original" else "ئەم وێنەیە دانابەزێت"
+        }
+    }
+
+    /** ئایکۆنی لابردنی باکگراوند لەسەر وێنەیەک. */
+    fun removeOne(r: ImageResult) = pick(r)
+
     /** وێنە هەڵبژێردراوەکان بەبێ لابردنی باکگراوند دادەبەزێنێت. */
     fun downloadSelected() {
         val picked = results.filter { it.fullUrl in selected }
