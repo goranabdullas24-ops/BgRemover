@@ -188,7 +188,7 @@ fun App(vm: MainViewModel = viewModel()) {
                             repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
-                    if (vm.source == "Wikimedia") {
+                    if (vm.source == "Wikipedia") {
                         Text(
                             "بۆ ئەنجامی ڕاستەوخۆی گۆگڵ، کلیلی Serper لە ڕێکخستن (⚙) دابنێ.",
                             style = MaterialTheme.typography.bodySmall,

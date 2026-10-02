@@ -31,15 +31,21 @@ object Net {
     private const val UA =
         "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36"
 
+    /** Wikimedia داوای ناسنامەی ڕاستەقینەی ئەپ دەکات؛ User-Agent ی وەک وێبگەڕ بلۆک دەکات (HTTP 403). */
+    const val WIKI_UA =
+        "BgRemover/2.1 (https://github.com/goranabdullas24-ops/BgRemover; Android image app) okhttp/4.12"
+
+    private fun isWikimedia(host: String) =
+        host.endsWith("wikimedia.org") || host.endsWith("wikipedia.org") || host.endsWith("wikidata.org")
+
     val client: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(45, TimeUnit.SECONDS)
         .followRedirects(true)
         .addInterceptor { chain ->
             val req = chain.request()
-            if (req.header("User-Agent") == null) {
-                chain.proceed(req.newBuilder().header("User-Agent", UA).build())
-            } else chain.proceed(req)
+            val ua = if (isWikimedia(req.url.host)) WIKI_UA else UA
+            chain.proceed(req.newBuilder().header("User-Agent", ua).build())
         }
         .build()
 
@@ -47,7 +53,14 @@ object Net {
         client.newCall(request).execute().use { resp ->
             val body = resp.body?.bytes() ?: ByteArray(0)
             if (!resp.isSuccessful) {
-                throw IOException("HTTP ${resp.code}: ${String(body).take(200)}")
+                val hint = when (resp.code) {
+                    401, 403 -> "ڕێگە نەدرا"
+                    404 -> "نەدۆزرایەوە"
+                    429 -> "داواکاری زۆرە، کەمێک چاوەڕێ بکە"
+                    in 500..599 -> "سێرڤەر کێشەی هەیە"
+                    else -> "هەڵەی تۆڕ"
+                }
+                throw IOException("$hint (HTTP ${resp.code})")
             }
             body
         }
@@ -63,7 +76,7 @@ object ImageSearch {
     suspend fun search(query: String, serperKey: String): Pair<String, List<ImageResult>> =
         withContext(Dispatchers.IO) {
             if (serperKey.isNotBlank()) "Google" to googleViaSerper(query, serperKey.trim())
-            else "Wikimedia" to wikimedia(query)
+            else "Wikipedia" to freeSearch(query)
         }
 
     private fun googleViaSerper(q: String, key: String): List<ImageResult> {
@@ -84,6 +97,54 @@ object ImageSearch {
             out += ImageResult(full, thumb, o.optString("title"))
         }
         return out
+    }
+
+    /** بێ کلیل: ویکیپیدیای کوردی + ئینگلیزی (وێنەی سەرەکیی بابەت) + Wikimedia Commons. */
+    private fun freeSearch(q: String): List<ImageResult> {
+        val out = LinkedHashMap<String, ImageResult>()
+        var lastError: Exception? = null
+        var anyOk = false
+        val sources: List<() -> List<ImageResult>> = listOf(
+            { wikipedia("ckb", q) },
+            { wikipedia("en", q) },
+            { wikimedia(q) }
+        )
+        for (src in sources) {
+            try {
+                src().forEach { out.putIfAbsent(it.fullUrl, it) }
+                anyOk = true
+            } catch (e: Exception) {
+                lastError = e
+            }
+        }
+        if (!anyOk && lastError != null) throw lastError!!
+        return out.values.toList()
+    }
+
+    private fun wikipedia(lang: String, q: String): List<ImageResult> {
+        val url = HttpUrl.Builder()
+            .scheme("https").host("$lang.wikipedia.org").addPathSegments("w/api.php")
+            .addQueryParameter("action", "query")
+            .addQueryParameter("format", "json")
+            .addQueryParameter("generator", "search")
+            .addQueryParameter("gsrsearch", q)
+            .addQueryParameter("gsrlimit", "10")
+            .addQueryParameter("prop", "pageimages")
+            .addQueryParameter("piprop", "original|thumbnail")
+            .addQueryParameter("pithumbsize", "400")
+            .build()
+        val json = JSONObject(String(Net.bytes(Request.Builder().url(url).build())))
+        val pages = json.optJSONObject("query")?.optJSONObject("pages") ?: return emptyList()
+        val items = ArrayList<Pair<Int, ImageResult>>()
+        val keys = pages.keys()
+        while (keys.hasNext()) {
+            val p = pages.getJSONObject(keys.next())
+            val full = p.optJSONObject("original")?.optString("source").orEmpty()
+            if (full.isBlank() || full.endsWith(".svg", true)) continue
+            val thumb = p.optJSONObject("thumbnail")?.optString("source").orEmpty().ifBlank { full }
+            items += p.optInt("index", 999) to ImageResult(full, thumb, p.optString("title"))
+        }
+        return items.sortedBy { it.first }.map { it.second }
     }
 
     private fun wikimedia(q: String): List<ImageResult> {

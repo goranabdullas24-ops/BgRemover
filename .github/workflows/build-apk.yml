@@ -13,6 +13,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Test free image search (same User-Agent as the app)
+        run: |
+          UA="BgRemover/2.1 (https://github.com/goranabdullas24-ops/BgRemover; Android image app) okhttp/4.12"
+          Q="بافڵ تاڵەبانی"
+          {
+          echo "Search test for: $Q"
+          for host in ckb.wikipedia.org en.wikipedia.org; do
+            code=$(curl -s -G -o r.json -w '%{http_code}' -A "$UA" --data-urlencode "gsrsearch=$Q" \
+              "https://$host/w/api.php?action=query&format=json&generator=search&gsrlimit=5&prop=pageimages&piprop=original")
+            n=$(python3 -c "import json;d=json.load(open('r.json'));print(sum(1 for p in d.get('query',{}).get('pages',{}).values() if 'original' in p))" 2>/dev/null || echo "?")
+            echo "- $host: HTTP $code, images: $n"
+          done
+          code=$(curl -s -G -o r.json -w '%{http_code}' -A "$UA" --data-urlencode "gsrsearch=$Q filetype:bitmap" \
+            "https://commons.wikimedia.org/w/api.php?action=query&format=json&generator=search&gsrnamespace=6&gsrlimit=10&prop=imageinfo&iiprop=url")
+          n=$(python3 -c "import json;d=json.load(open('r.json'));print(len(d.get('query',{}).get('pages',{})))" 2>/dev/null || echo "?")
+          echo "- commons.wikimedia.org: HTTP $code, images: $n"
+          img=$(python3 -c "import json;d=json.load(open('r.json'));print(next(iter(d['query']['pages'].values()))['imageinfo'][0]['url'])" 2>/dev/null)
+          [ -n "$img" ] && echo "- image download: HTTP $(curl -s -o /dev/null -w '%{http_code}' -A "$UA" "$img")"
+          } | tee search-test.md
+
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -42,3 +62,4 @@ jobs:
           tag_name: v${{ github.run_number }}
           name: BgRemover v${{ github.run_number }}
           files: app/build/outputs/apk/release/BgRemover.apk
+          body_path: search-test.md
