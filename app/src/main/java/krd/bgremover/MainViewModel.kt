@@ -31,19 +31,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var removeBgKey by mutableStateOf(prefs.getString("removebg", "") ?: "")
         private set
-    var useRemoveBg by mutableStateOf(prefs.getBoolean("use_removebg", false))
+    /** "isnet" (بنەڕەت، وردترین) | "fast" (ML Kit، خێرا) | "removebg" */
+    var engine by mutableStateOf(
+        prefs.getString("engine", null)
+            ?: if (prefs.getBoolean("use_removebg", false)) "removebg" else "isnet"
+    )
         private set
 
     private var job: Job? = null
 
-    fun saveSettings(serper: String, removeBg: String, useRb: Boolean) {
+    fun saveSettings(serper: String, removeBg: String, eng: String) {
         serperKey = serper.trim()
         removeBgKey = removeBg.trim()
-        useRemoveBg = useRb && removeBgKey.isNotBlank()
+        engine = if (eng == "removebg" && removeBgKey.isBlank()) "isnet" else eng
         prefs.edit()
             .putString("serper", serperKey)
             .putString("removebg", removeBgKey)
-            .putBoolean("use_removebg", useRemoveBg)
+            .putString("engine", engine)
             .apply()
     }
 
@@ -120,15 +124,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         job = viewModelScope.launch {
             busy = "لابردنی باکگراوند..."
             try {
-                cutout = if (useRemoveBg && removeBgKey.isNotBlank()) {
-                    try {
+                val app = getApplication<Application>()
+                cutout = when (engine) {
+                    "removebg" -> try {
+                        busy = "لابردنی باکگراوند بە remove.bg..."
                         BackgroundRemover.removeWithRemoveBg(src, removeBgKey)
                     } catch (e: Exception) {
-                        message = "remove.bg سەرنەکەوت، بە AI ی ناو مۆبایل دەکرێت"
+                        message = "remove.bg سەرنەکەوت — بە IS-Net کرا"
+                        BackgroundRemover.removeIsNet(app, src) { busy = it }
+                    }
+                    "fast" -> BackgroundRemover.removeOnDevice(src) { busy = it }
+                    else -> try {
+                        BackgroundRemover.removeIsNet(app, src) { busy = it }
+                    } catch (e: Exception) {
+                        if (e is kotlinx.coroutines.CancellationException) throw e
+                        message = "IS-Net: ${e.message} — بە شێوازی خێرا کرا"
                         BackgroundRemover.removeOnDevice(src) { busy = it }
                     }
-                } else {
-                    BackgroundRemover.removeOnDevice(src) { busy = it }
                 }
             } catch (e: OutOfMemoryError) {
                 message = "وێنەکە زۆر گەورەیە بۆ ئەم مۆبایلە"

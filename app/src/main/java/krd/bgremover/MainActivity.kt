@@ -319,14 +319,29 @@ private fun Modifier.checkerboard(cell: Dp = 12.dp) = drawBehind {
 private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
     var serper by remember { mutableStateOf(vm.serperKey) }
     var rb by remember { mutableStateOf(vm.removeBgKey) }
-    var useRb by remember { mutableStateOf(vm.useRemoveBg) }
+    var eng by remember { mutableStateOf(vm.engine) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("ڕێکخستن") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("شێوازی لابردنی باکگراوند:", fontWeight = FontWeight.Medium)
+                EngineOption("isnet", eng, "IS-Net 1024 (وردترین، بەخۆڕایی)",
+                    "یەکەم جار مۆدێلێک دادەبەزێت (~٤٧ MB)، پاشان بێ ئینتەرنێت") { eng = it }
+                EngineOption("fast", eng, "خێرا (ML Kit)", "خێراتر بەڵام کەمتر ورد") { eng = it }
+                EngineOption("removebg", eng, "remove.bg", "پێویستی بە کلیل و ئینتەرنێتە", enabled = rb.isNotBlank()) { eng = it }
+                OutlinedTextField(
+                    rb, { rb = it },
+                    label = { Text("remove.bg API Key (ئارەزوومەندانە)") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                HorizontalDivider()
                 Text(
-                    "گەڕانی گۆگڵ: کلیلێکی بەخۆڕایی لە serper.dev وەربگرە. بەبێ کلیل، لە Wikimedia دەگەڕێت.",
+                    "گەڕانی گۆگڵ: کلیلێکی بەخۆڕایی لە serper.dev. بەبێ کلیل لە ویکیپیدیا دەگەڕێت.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 OutlinedTextField(
@@ -335,27 +350,32 @@ private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation()
                 )
-                HorizontalDivider()
-                Text(
-                    "بۆ وردترین لابردن (بە تایبەت قژ): کلیلی remove.bg. بەبێ ئەوە AI ی ناو مۆبایل بەکاردێت.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                OutlinedTextField(
-                    rb, { rb = it },
-                    label = { Text("remove.bg API Key") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation()
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(checked = useRb, onCheckedChange = { useRb = it }, enabled = rb.isNotBlank())
-                    Spacer(Modifier.width(8.dp))
-                    Text("remove.bg بەکاربهێنە")
-                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { vm.saveSettings(serper, rb, useRb); onDismiss() }) { Text("پاشەکەوت") }
+            TextButton(onClick = { vm.saveSettings(serper, rb, eng); onDismiss() }) { Text("پاشەکەوت") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("داخستن") } }
     )
+}
+
+@Composable
+private fun EngineOption(
+    value: String, selected: String, title: String, sub: String,
+    enabled: Boolean = true, onSelect: (String) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(enabled = enabled) { onSelect(value) }
+            .padding(vertical = 2.dp)
+    ) {
+        RadioButton(selected = selected == value, onClick = { onSelect(value) }, enabled = enabled)
+        Column {
+            Text(title, style = MaterialTheme.typography.bodyMedium)
+            Text(sub, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+    }
 }

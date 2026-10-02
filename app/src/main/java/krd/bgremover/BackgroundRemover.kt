@@ -63,6 +63,13 @@ object BackgroundRemover {
         }
     }
 
+    /** IS-Net 1024px — وردترین، بەخۆڕایی، لەسەر مۆبایل (دوای یەک جار داگرتنی مۆدێل). */
+    suspend fun removeIsNet(ctx: android.content.Context, src: Bitmap, onStatus: (String) -> Unit): Bitmap {
+        val mask = IsNet.mask(ctx, src, onStatus)
+        onStatus("پاککردنەوەی لێوارەکان...")
+        return withContext(Dispatchers.Default) { MaskRefiner.refine(src, mask, light = true) }
+    }
+
     /** remove.bg — وردترین ئەنجام (بە تایبەت بۆ قژ). پێویستی بە کلیل و ئینتەرنێتە. */
     suspend fun removeWithRemoveBg(src: Bitmap, apiKey: String): Bitmap = withContext(Dispatchers.IO) {
         val bos = ByteArrayOutputStream()
@@ -92,7 +99,11 @@ object BackgroundRemover {
  */
 object MaskRefiner {
 
-    fun refine(src: Bitmap, raw: FloatArray): Bitmap {
+    /**
+     * light = true بۆ IS-Net: ماسکەکە خۆی وردە، تەنها پەڵە بچووکەکان و هالۆی ڕەنگ لادەبرێن
+     * و Guided Filter ی لاواز بەکاردێت بۆ ئەوەی تاڵەکانی قژ نەسڕێنەوە.
+     */
+    fun refine(src: Bitmap, raw: FloatArray, light: Boolean = false): Bitmap {
         val w = src.width
         val h = src.height
         val n = w * h
@@ -115,10 +126,19 @@ object MaskRefiner {
         removeSmallIslands(raw, w, h)
 
         // ٢. Guided filter
-        val radius = max(3, (min(w, h) / 90f).roundToInt())
-        var alpha = guidedFilter(gray, raw, w, h, radius, 1e-3f)
-        // تێپەڕینی دووەم بە نیوەی تیشک بۆ وردەکاری زیاتر
-        alpha = guidedFilter(gray, alpha, w, h, max(1, radius / 2), 1e-4f)
+        val radius: Int
+        var alpha: FloatArray
+        if (light) {
+            radius = max(2, (min(w, h) / 160f).roundToInt())
+            alpha = guidedFilter(gray, raw, w, h, max(1, radius / 2), 1e-4f)
+            // تێکەڵکردن: ماسکی IS-Net سەرەکییە، فلتەر تەنها لێوار ڕێک دەخات
+            for (i in alpha.indices) alpha[i] = 0.6f * raw[i] + 0.4f * alpha[i]
+        } else {
+            radius = max(3, (min(w, h) / 90f).roundToInt())
+            alpha = guidedFilter(gray, raw, w, h, radius, 1e-3f)
+            // تێپەڕینی دووەم بە نیوەی تیشک بۆ وردەکاری زیاتر
+            alpha = guidedFilter(gray, alpha, w, h, max(1, radius / 2), 1e-4f)
+        }
 
         // تەنها لە نزیک لێوارەکاندا ڕێگە بە ئەلفا بدە (نەک لە ناو باکگراوندی دوور)
         val band = box(raw, w, h, radius * 3)
@@ -129,7 +149,8 @@ object MaskRefiner {
                 band[i] < 0.01f -> a = 0f                       // دوور لە بابەت: تەواو لابراو
             }
             // levels: کەمێک تیژکردنەوە بۆ ئەوەی لێوار لێڵ نەبێت
-            alpha[i] = ((a - 0.12f) / 0.80f).coerceIn(0f, 1f)
+            alpha[i] = if (light) ((a - 0.03f) / 0.94f).coerceIn(0f, 1f)
+                       else ((a - 0.12f) / 0.80f).coerceIn(0f, 1f)
         }
 
         // ٣. لابردنی هالۆ: ڕەنگی پێشەوە = (C - (1-a)·B) / a

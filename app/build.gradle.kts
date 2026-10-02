@@ -12,8 +12,9 @@ android {
         applicationId = "krd.bgremover"
         minSdk = 29
         targetSdk = 35
-        versionCode = 3
-        versionName = "2.1"
+        versionCode = 4
+        versionName = "3.0"
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     buildTypes {
@@ -46,6 +47,9 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+    // IS-Net لەسەر مۆبایل
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
 
     // لابردنی باکگراوند لەسەر مۆبایل (بێ ئینتەرنێت)
     implementation("com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1")
