@@ -251,6 +251,44 @@ object ImageUtils {
         return out
     }
 
+    /** داگرتنی فایلی ئەسڵی وەک خۆی (بێ گۆڕین و بێ بچووککردنەوە). */
+    suspend fun downloadRaw(url: String): Pair<ByteArray, String> = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url(url).header("Accept", "image/*,*/*;q=0.8").build()
+        val bytes = Net.bytes(req)
+        val mime = sniffMime(bytes) ?: throw IOException("ئەمە وێنە نییە")
+        bytes to mime
+    }
+
+    private fun sniffMime(b: ByteArray): String? = when {
+        b.size > 3 && b[0] == 0xFF.toByte() && b[1] == 0xD8.toByte() -> "image/jpeg"
+        b.size > 8 && b[0] == 0x89.toByte() && b[1] == 'P'.code.toByte() && b[2] == 'N'.code.toByte() -> "image/png"
+        b.size > 12 && String(b, 0, 4, Charsets.US_ASCII) == "RIFF" &&
+            String(b, 8, 4, Charsets.US_ASCII) == "WEBP" -> "image/webp"
+        b.size > 6 && String(b, 0, 3, Charsets.US_ASCII) == "GIF" -> "image/gif"
+        else -> null
+    }
+
+    /** پاشەکەوتکردنی فایلی ئەسڵی لە گاڵەری › Pictures/BgRemover/Original */
+    fun saveBytesToGallery(ctx: Context, bytes: ByteArray, mime: String): Uri {
+        val ext = when (mime) {
+            "image/png" -> "png"; "image/webp" -> "webp"; "image/gif" -> "gif"; else -> "jpg"
+        }
+        val r = ctx.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "img_${System.currentTimeMillis()}.$ext")
+            put(MediaStore.Images.Media.MIME_TYPE, mime)
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/BgRemover/Original")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        val uri = r.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: throw IOException("نەتوانرا فایل دروست بکرێت")
+        r.openOutputStream(uri)?.use { it.write(bytes) } ?: throw IOException("نەتوانرا فایل بنووسرێت")
+        values.clear()
+        values.put(MediaStore.Images.Media.IS_PENDING, 0)
+        r.update(uri, values, null, null)
+        return uri
+    }
+
     fun saveToGallery(ctx: Context, bmp: Bitmap): Uri {
         val r = ctx.contentResolver
         val values = ContentValues().apply {

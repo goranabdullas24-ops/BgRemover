@@ -12,8 +12,8 @@ android {
         applicationId = "krd.bgremover"
         minSdk = 29
         targetSdk = 35
-        versionCode = 6
-        versionName = "3.2"
+        versionCode = 7
+        versionName = "3.3"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 

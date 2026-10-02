@@ -218,7 +218,68 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } else null
         }
 
+    // سەرچاوەی وێنەی ئێستا (بۆ داگرتنی ئەسڵی)
+    private var originalUrl: String? = null
+    private var originalFallback: String? = null
+
+    /** داگرتنی فایلێک بەبێ لابردنی باکگراوند (ئەسڵی، کوالیتی تەواو). */
+    private suspend fun saveRaw(url: String, fallback: String?): Boolean {
+        val app = getApplication<Application>()
+        val (bytes, mime) = try {
+            ImageUtils.downloadRaw(url)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            if (fallback != null && fallback != url) {
+                try { ImageUtils.downloadRaw(fallback) } catch (_: Exception) { return false }
+            } else return false
+        }
+        return try {
+            withContext(Dispatchers.IO) { ImageUtils.saveBytesToGallery(app, bytes, mime) }
+            true
+        } catch (_: Exception) { false }
+    }
+
+    /** وێنەی سەرەکی (پێش لابردن) پاشەکەوت دەکات. */
+    fun saveOriginal() {
+        viewModelScope.launch {
+            busy = "داگرتنی وێنەی ئەسڵی..."
+            val url = originalUrl
+            val ok = if (url != null) saveRaw(url, originalFallback) else {
+                val bmp = original
+                if (bmp == null) false else try {
+                    withContext(Dispatchers.IO) {
+                        val bos = java.io.ByteArrayOutputStream()
+                        bmp.compress(Bitmap.CompressFormat.JPEG, 95, bos)
+                        ImageUtils.saveBytesToGallery(getApplication(), bos.toByteArray(), "image/jpeg")
+                    }
+                    true
+                } catch (_: Exception) { false }
+            }
+            busy = null
+            message = if (ok) "پاشەکەوت کرا لە گاڵەری › Pictures/BgRemover/Original" else "داگرتن سەرنەکەوت"
+        }
+    }
+
+    /** وێنە هەڵبژێردراوەکان بەبێ لابردنی باکگراوند دادەبەزێنێت. */
+    fun downloadSelected() {
+        val picked = results.filter { it.fullUrl in selected }
+        if (picked.isEmpty()) return
+        cancelSelect()
+        viewModelScope.launch {
+            var ok = 0
+            picked.forEachIndexed { i, r ->
+                busy = "داگرتنی وێنەی ${i + 1} لە ${picked.size}..."
+                if (saveRaw(r.fullUrl, r.thumbUrl)) ok++
+            }
+            busy = null
+            message = "$ok لە ${picked.size} وێنە دابەزی › Pictures/BgRemover/Original"
+        }
+    }
+
     private fun loadFromUrl(url: String, fallback: String?) {
+        originalUrl = url
+        originalFallback = fallback
         job?.cancel()
         job = viewModelScope.launch {
             busy = "داگرتنی وێنە..."
@@ -231,6 +292,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun loadUri(uri: Uri) {
+        originalUrl = null
+        originalFallback = null
         job?.cancel()
         job = viewModelScope.launch {
             busy = "کردنەوەی وێنە..."

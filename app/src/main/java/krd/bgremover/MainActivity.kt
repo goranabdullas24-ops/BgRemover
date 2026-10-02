@@ -265,6 +265,14 @@ fun App(vm: MainViewModel = viewModel()) {
                         Icon(Icons.Default.AutoFixHigh, null); Spacer(Modifier.width(8.dp))
                         Text("لابردنی باکگراوندی ${vm.selected.size} وێنە")
                     }
+                    OutlinedButton(
+                        onClick = vm::downloadSelected,
+                        enabled = vm.busy == null,
+                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                    ) {
+                        Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp))
+                        Text("داگرتنی ${vm.selected.size} وێنە بەبێ لابردنی باکگراوند")
+                    }
                 }
             }
 
@@ -280,6 +288,15 @@ fun App(vm: MainViewModel = viewModel()) {
                         modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
                         contentScale = ContentScale.Fit
                     )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = vm::saveOriginal,
+                        enabled = vm.busy == null,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp))
+                        Text("داگرتنی وێنەکە بەبێ لابردنی باکگراوند")
+                    }
                 }
             }
 
