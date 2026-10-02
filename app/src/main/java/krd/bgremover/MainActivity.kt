@@ -198,7 +198,15 @@ fun App(vm: MainViewModel = viewModel()) {
             }
 
             vm.original?.let { bmp ->
-                SectionCard("وێنەی سەرەکی") {
+                SectionCard("وێنەی سەرەکی — ${bmp.width}×${bmp.height} پیکسڵ" + if (vm.upscaled) " (Upscale کراوە ✨)" else "") {
+                    if (vm.lowQuality) {
+                        Text(
+                            "⚠ ئەم ماڵپەڕە ڕێگەی بە داگرتنی وێنە ئەسڵییەکە نەدا؛ تەنها وێنە بچووکەکەی بەردەستە. وێنەیەکی تر هەڵبژێرە بۆ کوالیتی باشتر.",
+                            color = Color(0xFFD93025),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
+                    }
                     val img = remember(bmp) { bmp.asImageBitmap() }
                     Image(
                         img, null,
@@ -206,6 +214,17 @@ fun App(vm: MainViewModel = viewModel()) {
                         contentScale = ContentScale.Fit
                     )
                     Spacer(Modifier.height(8.dp))
+                    if (!vm.upscaled && maxOf(bmp.width, bmp.height) < 2048) {
+                        Button(
+                            onClick = vm::upscaleNow,
+                            enabled = vm.busy == null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(6.dp))
+                            Text("Upscale بە AI (×٤) — گەورە و ڕوونکردنەوە")
+                        }
+                        Spacer(Modifier.height(6.dp))
+                    }
                     OutlinedButton(
                         onClick = vm::saveOriginal,
                         enabled = vm.busy == null,
@@ -218,7 +237,7 @@ fun App(vm: MainViewModel = viewModel()) {
             }
 
             vm.cutout?.let { cut ->
-                SectionCard("ئەنجام — بێ باکگراوند") {
+                SectionCard("ئەنجام — بێ باکگراوند (${cut.width}×${cut.height})") {
                     val img = remember(cut) { cut.asImageBitmap() }
                     val bg = vm.bgColor
                     Box(
@@ -542,6 +561,14 @@ private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                     Column {
                         Text("تەنها کەسی سەرەکی (فۆکس)", fontWeight = FontWeight.Medium)
                         Text("ئەگەر چەند کەس هەبن، تەنها ئەوەی فۆکسی لەسەرە دەمێنێتەوە", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = vm.autoUpscale, onCheckedChange = { vm.changeAutoUpscale(it) })
+                    Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text("Upscale ی خۆکار", fontWeight = FontWeight.Medium)
+                        Text("وێنەی بچووکتر لە ١٠٠٠ پیکسڵ بە AI گەورە و ڕوون دەکرێتەوە", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     }
                 }
                 HorizontalDivider()

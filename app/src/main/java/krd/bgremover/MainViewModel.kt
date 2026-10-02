@@ -25,6 +25,7 @@ data class BatchItem(
     val id: Int,
     val url: String? = null,
     val fallbackUrl: String? = null,
+    val referer: String? = null,
     val uri: Uri? = null,
     val status: Status = Status.WAITING,
     val thumb: Bitmap? = null,
@@ -186,19 +187,47 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ───────────────────────── یەک وێنە ─────────────────────────
 
-    fun pick(r: ImageResult) = loadFromUrl(r.fullUrl, r.thumbUrl)
+    fun pick(r: ImageResult) = loadFromUrl(r.fullUrl, r.thumbUrl, r.pageUrl)
 
-    private suspend fun download(url: String, fallback: String?): Bitmap? =
-        try {
-            ImageUtils.download(url)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // هەندێک ماڵپەڕ داگرتن قەدەغە دەکەن → وێنە بچووکەکە بەکاردەهێنین
-            if (fallback != null && fallback != url) {
-                try { ImageUtils.download(fallback) } catch (_: Exception) { null }
-            } else null
+    /** true ئەگەر وێنە ئەسڵییەکە دانەبەزی و تەنها وێنە بچووکەکە بەکارهات. */
+    var lowQuality by mutableStateOf(false)
+
+    /**
+     * سەرەتا وێنە ئەسڵییەکە بە قەبارە و کوالیتی تەواو دادەبەزێنێت.
+     * ئەگەر ماڵپەڕەکە ڕێگەی نەدا، جارێکی تر لەگەڵ Referer هەوڵ دەدات،
+     * تەنها لە کۆتاییدا وێنە بچووکەکە (thumbnail) بەکاردەهێنێت.
+     */
+    private suspend fun download(url: String, fallback: String?, referer: String? = null): Bitmap? {
+        lowQuality = false
+        val attempts = buildList<suspend () -> Bitmap> {
+            add { ImageUtils.download(url) }
+            // هەندێک ماڵپەڕ تەنها لەگەڵ Referer وێنە دەدەن
+            add {
+                val ref = referer?.ifBlank { null }
+                    ?: Uri.parse(url).let { "${it.scheme}://${it.host}/" }
+                ImageUtils.download(url, ref)
+            }
         }
+        for (a in attempts) {
+            try {
+                return a()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+        }
+        if (fallback != null && fallback != url) {
+            try {
+                val b = ImageUtils.download(fallback)
+                lowQuality = true
+                return b
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+        }
+        return null
+    }
 
     // سەرچاوەی وێنەی ئێستا (بۆ داگرتنی ئەسڵی)
     private var originalUrl: String? = null
@@ -227,13 +256,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             busy = "داگرتنی وێنەی ئەسڵی..."
             val url = originalUrl
-            val ok = if (url != null) saveRaw(url, originalFallback) else {
+            val ok = if (url != null && !upscaled) saveRaw(url, originalFallback) else {
                 val bmp = original
                 if (bmp == null) false else try {
                     withContext(Dispatchers.IO) {
                         val bos = java.io.ByteArrayOutputStream()
-                        bmp.compress(Bitmap.CompressFormat.JPEG, 95, bos)
-                        ImageUtils.saveBytesToGallery(getApplication(), bos.toByteArray(), "image/jpeg")
+                        bmp.compress(Bitmap.CompressFormat.PNG, 100, bos)   // بێ لەدەستدانی کوالیتی
+                        ImageUtils.saveBytesToGallery(getApplication(), bos.toByteArray(), "image/png")
                     }
                     true
                 } catch (_: Exception) { false }
@@ -259,17 +288,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    private fun loadFromUrl(url: String, fallback: String?) {
+    private fun loadFromUrl(url: String, fallback: String?, referer: String? = null) {
         originalUrl = url
         originalFallback = fallback
         job?.cancel()
         job = viewModelScope.launch {
-            busy = "داگرتنی وێنە..."
-            val bmp = download(url, fallback)
+            original = null
+            cutout = null
+            busy = "١/٢ داگرتنی وێنە بە قەبارە و کوالیتی تەواو..."
+            val bmp = download(url, fallback, referer)
             busy = null
             if (bmp == null) {
                 message = "ئەم وێنەیە دانابەزێت، یەکێکی تر هەڵبژێرە"
-            } else setImage(bmp)
+            } else setImage(prepare(bmp))
         }
     }
 
@@ -282,12 +313,62 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val bmp = withContext(Dispatchers.IO) { ImageUtils.decodeUri(getApplication(), uri) }
                 busy = null
-                setImage(bmp)
+                setImage(prepare(bmp))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 busy = null
                 message = "نەتوانرا وێنەکە بکرێتەوە"
+            }
+        }
+    }
+
+    // ───────────────────────── Upscale ─────────────────────────
+
+    /** وێنە بچووکەکان خۆکارانە بە AI گەورە و ڕوون دەکرێنەوە پێش لابردنی باکگراوند. */
+    var autoUpscale by mutableStateOf(prefs.getBoolean("auto_upscale", true))
+        private set
+    /** وێنەی ئێستا upscale کراوە؟ */
+    var upscaled by mutableStateOf(false)
+        private set
+
+    fun changeAutoUpscale(v: Boolean) {
+        autoUpscale = v
+        prefs.edit().putBoolean("auto_upscale", v).apply()
+    }
+
+    private suspend fun upscaleSafe(bmp: Bitmap, maxSide: Int, onStatus: (String) -> Unit): Bitmap? =
+        try {
+            Upscaler.upscale(getApplication(), bmp, maxSide, onStatus)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: OutOfMemoryError) {
+            message = "Upscale: بیرگەی مۆبایل بەس نییە"; null
+        } catch (e: Exception) {
+            message = "Upscale سەرنەکەوت: ${e.message}"; null
+        }
+
+    /** ئەگەر Upscale ی خۆکار چالاک بێت و وێنەکە بچووک بێت، پێشتر upscale دەکرێت. */
+    private suspend fun prepare(bmp: Bitmap): Bitmap {
+        upscaled = false
+        if (!autoUpscale || max(bmp.width, bmp.height) >= Upscaler.AUTO_BELOW) return bmp
+        original = bmp
+        val up = upscaleSafe(bmp, 2400) { busy = "وێنەکە بچووکە (${bmp.width}×${bmp.height}) — $it" }
+        busy = null
+        return if (up != null) { upscaled = true; up } else bmp
+    }
+
+    /** دوگمەی Upscale: وێنەی ئێستا ×٤ گەورە و ڕوون دەکاتەوە، پاشان باکگراوند لادەبات. */
+    fun upscaleNow() {
+        val src = original ?: return
+        job?.cancel()
+        job = viewModelScope.launch {
+            val up = upscaleSafe(src, 4096) { busy = it }
+            busy = null
+            if (up != null) {
+                upscaled = true
+                setImage(up)
+                message = "Upscale کرا: ${src.width}×${src.height} → ${up.width}×${up.height}"
             }
         }
     }
@@ -336,7 +417,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun removeBackground() {
         val src = original ?: return
         job = viewModelScope.launch {
-            busy = "لابردنی باکگراوند..."
+            busy = "٢/٢ لابردنی باکگراوند (${src.width}×${src.height})..."
             try {
                 cutout = cut(src) { busy = it }
             } catch (e: CancellationException) {
@@ -376,7 +457,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun batchFromSelection() {
         val picked = results.filter { it.fullUrl in selected }
         if (picked.isEmpty()) return
-        picked.forEach { batch += BatchItem(nextId++, url = it.fullUrl, fallbackUrl = it.thumbUrl) }
+        picked.forEach { batch += BatchItem(nextId++, url = it.fullUrl, fallbackUrl = it.thumbUrl, referer = it.pageUrl) }
         cancelSelect()
         runBatch()
     }
@@ -407,7 +488,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 try {
                     val src = when {
                         item.uri != null -> withContext(Dispatchers.IO) { ImageUtils.decodeUri(app, item.uri) }
-                        else -> download(item.url!!, item.fallbackUrl) ?: error("دانابەزێت")
+                        else -> download(item.url!!, item.fallbackUrl, item.referer) ?: error("دانابەزێت")
+                    }.let { b ->
+                        if (autoUpscale && max(b.width, b.height) < Upscaler.AUTO_BELOW)
+                            upscaleSafe(b, 2400) { batchStatus = "$prefix — $it" } ?: b
+                        else b
                     }
                     val res = cut(src) { batchStatus = "$prefix — $it" }
                     val f = File(dir, "cut_${item.id}.png")

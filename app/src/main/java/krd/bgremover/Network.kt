@@ -27,7 +27,13 @@ import java.util.concurrent.TimeUnit
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-data class ImageResult(val fullUrl: String, val thumbUrl: String, val title: String)
+data class ImageResult(
+    val fullUrl: String,
+    val thumbUrl: String,
+    val title: String,
+    /** پەڕەی سەرچاوە؛ بۆ ئەو ماڵپەڕانەی بەبێ Referer وێنە نادەن */
+    val pageUrl: String = ""
+)
 
 /** HTTP client هاوبەش. User-Agent زیاد دەکات چونکە هەندێک ماڵپەڕ بەبێ ئەوە وێنە نادەن. */
 object Net {
@@ -97,7 +103,7 @@ object ImageSearch {
             val full = o.optString("imageUrl")
             if (full.isBlank()) continue
             val thumb = o.optString("thumbnailUrl").ifBlank { full }
-            out += ImageResult(full, thumb, o.optString("title"))
+            out += ImageResult(full, thumb, o.optString("title"), o.optString("link"))
         }
         return out
     }
@@ -197,7 +203,7 @@ object ImageSearch {
             val o = arr.getJSONObject(i)
             val full = o.optString("url")
             if (full.isBlank() || full.endsWith(".svg", true)) continue
-            out += ImageResult(full, o.optString("thumbnail").ifBlank { full }, o.optString("title"))
+            out += ImageResult(full, o.optString("thumbnail").ifBlank { full }, o.optString("title"), o.optString("foreign_landing_url"))
         }
         return out
     }
@@ -205,7 +211,7 @@ object ImageSearch {
 
 object ImageUtils {
     /** گەورەترین لا. گەورەتر لەمە بچووک دەکرێتەوە بۆ ئەوەی مۆبایل پڕ نەبێت. */
-    const val MAX_SIDE = 4096
+    const val MAX_PIXELS = 24_000_000L
 
     /** قەبارەی کارکردن بۆ دۆزینەوەی باکگراوند؛ ئەنجامی کۆتایی بە قەبارەی تەواوی ئەسڵی دەبێت. */
     const val WORK_SIDE = 1600
@@ -256,9 +262,11 @@ object ImageUtils {
             decoder.isMutableRequired = true
             val w = info.size.width
             val h = info.size.height
-            val m = max(w, h)
-            if (m > MAX_SIDE) {
-                val s = MAX_SIDE.toFloat() / m
+            // قەبارەی ئەسڵی وەک خۆی؛ تەنها وێنەی زۆر زۆر گەورە (> ٢٤ مێگاپیکسڵ) بچووک دەکرێتەوە
+            // بۆ ئەوەی مۆبایل پڕ نەبێت
+            val px = w.toLong() * h
+            if (px > MAX_PIXELS) {
+                val s = kotlin.math.sqrt(MAX_PIXELS.toDouble() / px).toFloat()
                 decoder.setTargetSize(
                     (w * s).roundToInt().coerceAtLeast(1),
                     (h * s).roundToInt().coerceAtLeast(1)
@@ -279,9 +287,10 @@ object ImageUtils {
     fun decodeUri(ctx: Context, uri: Uri): Bitmap =
         decode(ImageDecoder.createSource(ctx.contentResolver, uri))
 
-    suspend fun download(url: String): Bitmap = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url(url).header("Accept", "image/*,*/*;q=0.8").build()
-        decodeBytes(Net.bytes(req))
+    suspend fun download(url: String, referer: String? = null): Bitmap = withContext(Dispatchers.IO) {
+        val b = Request.Builder().url(url).header("Accept", "image/*,*/*;q=0.8")
+        if (!referer.isNullOrBlank()) b.header("Referer", referer)
+        decodeBytes(Net.bytes(b.build()))
     }
 
     /** وێنەی بێ باکگراوند لەسەر ڕەنگێک دادەنێت. null = ڕوون (transparent). */
