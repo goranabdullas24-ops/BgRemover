@@ -32,6 +32,8 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { compose = true }
+    // کۆمپرێسکردنی کتێبخانە native ەکان بۆ APK ی بچووکتر
+    packaging { jniLibs { useLegacyPackaging = true } }
 }
 
 dependencies {
