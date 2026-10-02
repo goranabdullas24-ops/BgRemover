@@ -87,7 +87,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var job: Job? = null
 
-    fun setPersonOnly(v: Boolean) {
+    fun changePersonOnly(v: Boolean) {
         personOnly = v
         prefs.edit().putBoolean("person_only", v).apply()
     }

@@ -534,7 +534,7 @@ private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(checked = vm.personOnly, onCheckedChange = { vm.setPersonOnly(it) })
+                    Switch(checked = vm.personOnly, onCheckedChange = { vm.changePersonOnly(it) })
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text("تەنها مرۆڤ", fontWeight = FontWeight.Medium)
