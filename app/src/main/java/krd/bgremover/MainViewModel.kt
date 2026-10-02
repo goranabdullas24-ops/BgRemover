@@ -78,13 +78,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var personOnly by mutableStateOf(prefs.getBoolean("person_only", true))
         private set
 
-    // سترۆک (هێڵی دەوروبەری کەسەکە)
-    var strokeLevel by mutableStateOf(prefs.getInt("stroke_level", 0))
-    var strokeColor by mutableStateOf(prefs.getInt("stroke_color", android.graphics.Color.WHITE))
-    /** پێشبینینی ئەنجام لەگەڵ سترۆک (بێ باکگراوند). */
-    var display by mutableStateOf<Bitmap?>(null)
-    private var displayJob: Job? = null
-
     private var job: Job? = null
 
     /** تەنها کەسی سەرەکی (ئەوەی فۆکسی لەسەرە)، کەسانی تر لادەبرێن. */
@@ -101,28 +94,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putBoolean("person_only", v).apply()
     }
 
-    private fun strokePx(b: Bitmap): Int =
-        if (strokeLevel <= 0) 0 else max(1, (strokeLevel * minOf(b.width, b.height) / 250f).toInt())
-
-    /** ئەنجامی کۆتایی: سترۆک + ڕەنگی باکگراوند. */
-    fun compose(fg: Bitmap): Bitmap =
-        ImageUtils.withBackground(PersonCut.withStroke(fg, strokePx(fg), strokeColor), bgColor)
-
-    fun updateStroke(level: Int = strokeLevel, color: Int = strokeColor) {
-        strokeLevel = level
-        strokeColor = color
-        prefs.edit().putInt("stroke_level", level).putInt("stroke_color", color).apply()
-        refreshDisplay()
-    }
-
-    fun refreshDisplay() {
-        val c = cutout
-        displayJob?.cancel()
-        if (c == null || strokeLevel <= 0) { display = null; return }
-        displayJob = viewModelScope.launch {
-            display = withContext(Dispatchers.Default) { PersonCut.withStroke(c, strokePx(c), strokeColor) }
-        }
-    }
+    /** ئەنجامی کۆتایی: تەنها ڕەنگی باکگراوند (ئەگەر هەڵبژێردرابێت). */
+    fun compose(fg: Bitmap): Bitmap = ImageUtils.withBackground(fg, bgColor)
 
     fun saveSettings(serper: String, removeBg: String, eng: String) {
         serperKey = serper.trim()
@@ -322,33 +295,42 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun setImage(bmp: Bitmap) {
         original = bmp
         cutout = null
-        display = null
         removeBackground()   // ڕاستەوخۆ باکگراوند لادەبات
     }
 
     /** دڵی ئەپەکە: بەپێی شێوازی هەڵبژێردراو باکگراوند لادەبات، لەگەڵ شێوازی یەدەگ. */
+    /**
+     * دڵی ئەپەکە. شیکردنەوە لەسەر کۆپییەکی بچووکتر دەکرێت، بەڵام ئەنجامی کۆتایی
+     * بە قەبارە و کوالیتی تەواوی وێنە ئەسڵییەکەیە (ڕەنگەکان دەستکاری ناکرێن).
+     */
     private suspend fun cut(src: Bitmap, onStatus: (String) -> Unit): Bitmap {
         val app = getApplication<Application>()
-        return when (engine) {
-            "removebg" -> try {
+        if (engine == "removebg") {
+            try {
                 onStatus("لابردنی باکگراوند بە remove.bg...")
-                BackgroundRemover.removeWithRemoveBg(src, removeBgKey)
+                return BackgroundRemover.removeWithRemoveBg(src, removeBgKey)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 message = "remove.bg سەرنەکەوت — بە IS-Net کرا"
-                BackgroundRemover.removeIsNet(app, src, personOnly, focusOnly, onStatus)
-            }
-            "fast" -> BackgroundRemover.removeOnDevice(src, personOnly, focusOnly, onStatus)
-            else -> try {
-                BackgroundRemover.removeIsNet(app, src, personOnly, focusOnly, onStatus)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                message = "IS-Net: ${e.message} — بە شێوازی خێرا کرا"
-                BackgroundRemover.removeOnDevice(src, personOnly, focusOnly, onStatus)
             }
         }
+        val work = ImageUtils.workCopy(src)
+        val small = if (engine == "fast") {
+            BackgroundRemover.removeOnDevice(work, personOnly, focusOnly, onStatus)
+        } else try {
+            BackgroundRemover.removeIsNet(app, work, personOnly, focusOnly, onStatus)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            message = "IS-Net: ${e.message} — بە شێوازی خێرا کرا"
+            BackgroundRemover.removeOnDevice(work, personOnly, focusOnly, onStatus)
+        }
+        onStatus("جێبەجێکردن لەسەر کوالیتی تەواو (${src.width}×${src.height})...")
+        val full = withContext(Dispatchers.Default) { ImageUtils.applyAlpha(src, small) }
+        small.recycle()
+        if (work !== src) work.recycle()
+        return full
     }
 
     fun removeBackground() {
@@ -357,7 +339,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             busy = "لابردنی باکگراوند..."
             try {
                 cutout = cut(src) { busy = it }
-                refreshDisplay()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: OutOfMemoryError) {
@@ -487,7 +468,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             cutout = withContext(Dispatchers.IO) { decodeFile(f) }
             original = null
-            refreshDisplay()
         }
     }
 

@@ -205,7 +205,50 @@ object ImageSearch {
 
 object ImageUtils {
     /** گەورەترین لا. گەورەتر لەمە بچووک دەکرێتەوە بۆ ئەوەی مۆبایل پڕ نەبێت. */
-    const val MAX_SIDE = 1600
+    const val MAX_SIDE = 4096
+
+    /** قەبارەی کارکردن بۆ دۆزینەوەی باکگراوند؛ ئەنجامی کۆتایی بە قەبارەی تەواوی ئەسڵی دەبێت. */
+    const val WORK_SIDE = 1600
+
+    /** کۆپییەکی بچووکتر بۆ شیکردنەوە (ئەسڵەکە دەستکاری ناکرێت). */
+    fun workCopy(src: Bitmap): Bitmap {
+        val m = max(src.width, src.height)
+        if (m <= WORK_SIDE) return src
+        val s = WORK_SIDE.toFloat() / m
+        return Bitmap.createScaledBitmap(
+            src, (src.width * s).roundToInt().coerceAtLeast(1),
+            (src.height * s).roundToInt().coerceAtLeast(1), true
+        )
+    }
+
+    /**
+     * ماسکی ئەنجامە بچووکەکە (تەنها ئەلفا) دەخاتە سەر وێنە ئەسڵییەکە بە قەبارەی تەواو.
+     * ڕەنگ و وردەکارییەکانی وێنەکە هیچ دەستکاری ناکرێن.
+     */
+    fun applyAlpha(src: Bitmap, cut: Bitmap): Bitmap {
+        val w = src.width; val h = src.height
+        val a = cut.extractAlpha()
+        val aFull = if (a.width == w && a.height == h) a else Bitmap.createScaledBitmap(a, w, h, true)
+        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        out.setHasAlpha(true)
+        val band = 64
+        val sp = IntArray(w * band)
+        val ap = IntArray(w * band)
+        var y = 0
+        while (y < h) {
+            val rows = minOf(band, h - y)
+            src.getPixels(sp, 0, w, 0, y, w, rows)
+            aFull.getPixels(ap, 0, w, 0, y, w, rows)
+            for (i in 0 until w * rows) {
+                sp[i] = (ap[i] and 0xFF000000.toInt()) or (sp[i] and 0x00FFFFFF)
+            }
+            out.setPixels(sp, 0, w, 0, y, w, rows)
+            y += rows
+        }
+        if (aFull !== a) aFull.recycle()
+        a.recycle()
+        return out
+    }
 
     private fun decode(source: ImageDecoder.Source): Bitmap {
         val bmp = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->

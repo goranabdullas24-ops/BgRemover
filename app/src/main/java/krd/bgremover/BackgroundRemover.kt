@@ -86,7 +86,7 @@ object BackgroundRemover {
     /** remove.bg — وردترین ئەنجام (بە تایبەت بۆ قژ). پێویستی بە کلیل و ئینتەرنێتە. */
     suspend fun removeWithRemoveBg(src: Bitmap, apiKey: String): Bitmap = withContext(Dispatchers.IO) {
         val bos = ByteArrayOutputStream()
-        src.compress(Bitmap.CompressFormat.JPEG, 95, bos)
+        src.compress(Bitmap.CompressFormat.JPEG, 100, bos)
         val body = MultipartBody.Builder().setType(MultipartBody.FORM)
             .addFormDataPart("size", "auto")
             .addFormDataPart("format", "png")

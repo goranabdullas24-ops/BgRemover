@@ -215,36 +215,6 @@ object PersonCut {
         val region = MaskOps.dilate(keep, w, h, 3)
         for (i in 0 until n) alpha[i] *= region[i]
     }
-
-    /**
-     * سترۆک (هێڵی دەوروبەر) بە ڕەنگ و پانی دیاریکراو.
-     * شێوەکە پێشتر نەرم دەکرێت بۆ ئەوەی هێڵەکە ڕێک بێت (بەبێ دڕکاوی قژ).
-     */
-    fun withStroke(fg: Bitmap, widthPx: Int, color: Int): Bitmap {
-        if (widthPx <= 0) return fg
-        val w = fg.width; val h = fg.height; val n = w * h
-        val px = IntArray(n)
-        fg.getPixels(px, 0, w, 0, 0, w, h)
-        val a = FloatArray(n) { ((px[it] ushr 24) and 255) / 255f }
-        // نەرمکردن ≈ Gaussian (سێ جار box)
-        val rr = max(1, (widthPx * 0.35f).roundToInt())
-        var sm = MaskOps.box(a, w, h, rr)
-        sm = MaskOps.box(sm, w, h, rr)
-        sm = MaskOps.box(sm, w, h, rr)
-        val inside = BooleanArray(n) { sm[it] > 0.5f || a[it] > 0.5f }
-        val d = MaskOps.edt(inside, w, h)
-        val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        val sp = IntArray(n)
-        val cr = color and 0x00FFFFFF
-        val ca = (color ushr 24) and 255
-        for (i in 0 until n) {
-            val s = (widthPx - d[i] + 0.5f).coerceIn(0f, 1f)
-            if (s > 0f) sp[i] = ((s * ca).roundToInt() shl 24) or cr
-        }
-        out.setPixels(sp, 0, w, 0, 0, w, h)
-        Canvas(out).drawBitmap(fg, 0f, 0f, null)
-        return out
-    }
 }
 
 /** کردارە بنەڕەتییەکانی ماسک. */
