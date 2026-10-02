@@ -87,6 +87,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var job: Job? = null
 
+    /** تەنها کەسی سەرەکی (ئەوەی فۆکسی لەسەرە)، کەسانی تر لادەبرێن. */
+    var focusOnly by mutableStateOf(prefs.getBoolean("focus_only", true))
+        private set
+
+    fun changeFocusOnly(v: Boolean) {
+        focusOnly = v
+        prefs.edit().putBoolean("focus_only", v).apply()
+    }
+
     fun changePersonOnly(v: Boolean) {
         personOnly = v
         prefs.edit().putBoolean("person_only", v).apply()
@@ -328,16 +337,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 throw e
             } catch (e: Exception) {
                 message = "remove.bg سەرنەکەوت — بە IS-Net کرا"
-                BackgroundRemover.removeIsNet(app, src, personOnly, onStatus)
+                BackgroundRemover.removeIsNet(app, src, personOnly, focusOnly, onStatus)
             }
-            "fast" -> BackgroundRemover.removeOnDevice(src, personOnly, onStatus)
+            "fast" -> BackgroundRemover.removeOnDevice(src, personOnly, focusOnly, onStatus)
             else -> try {
-                BackgroundRemover.removeIsNet(app, src, personOnly, onStatus)
+                BackgroundRemover.removeIsNet(app, src, personOnly, focusOnly, onStatus)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 message = "IS-Net: ${e.message} — بە شێوازی خێرا کرا"
-                BackgroundRemover.removeOnDevice(src, personOnly, onStatus)
+                BackgroundRemover.removeOnDevice(src, personOnly, focusOnly, onStatus)
             }
         }
     }

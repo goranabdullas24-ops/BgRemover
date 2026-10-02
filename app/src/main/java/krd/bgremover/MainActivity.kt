@@ -558,6 +558,14 @@ private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                         Text("شتی زیادە لادەبات و لەشی کەسەکە پڕ دەکات", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     }
                 }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = vm.focusOnly, onCheckedChange = { vm.changeFocusOnly(it) })
+                    Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text("تەنها کەسی سەرەکی (فۆکس)", fontWeight = FontWeight.Medium)
+                        Text("ئەگەر چەند کەس هەبن، تەنها ئەوەی فۆکسی لەسەرە دەمێنێتەوە", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    }
+                }
                 HorizontalDivider()
                 Text("شێوازی لابردنی باکگراوند:", fontWeight = FontWeight.Medium)
                 EngineOption("isnet", eng, "IS-Net 1024 (وردترین، بەخۆڕایی)",

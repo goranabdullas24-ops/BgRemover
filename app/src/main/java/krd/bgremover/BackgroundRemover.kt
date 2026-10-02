@@ -30,7 +30,9 @@ object BackgroundRemover {
     }
 
     /** لەسەر مۆبایل: ML Kit + وردکردنەوەی لێوار. بێ ئینتەرنێت کار دەکات. */
-    suspend fun removeOnDevice(src: Bitmap, personOnly: Boolean = false, onStatus: (String) -> Unit = {}): Bitmap {
+    suspend fun removeOnDevice(
+        src: Bitmap, personOnly: Boolean = false, focusOnly: Boolean = false, onStatus: (String) -> Unit = {}
+    ): Bitmap {
         val input = InputImage.fromBitmap(src, 0)
         var attempt = 0
         var result: SubjectSegmentationResult? = null
@@ -50,6 +52,7 @@ object BackgroundRemover {
             ?: throw IllegalStateException("هیچ کەس یان شتێک لە وێنەکەدا نەدۆزرایەوە")
 
         val person = if (personOnly) PersonCut.personMask(src) else null
+        val focus = if (focusOnly) PersonCut.focusMask(src) else null
         return withContext(Dispatchers.Default) {
             val w = src.width
             val h = src.height
@@ -60,20 +63,22 @@ object BackgroundRemover {
             val mask = FloatArray(w * h)
             buf.get(mask)
             onStatus("وردکردنەوەی لێوارەکان...")
-            PersonCut.clean(mask, person, w, h)
+            PersonCut.clean(mask, person, w, h, focus)
             MaskRefiner.refine(src, mask)
         }
     }
 
     /** IS-Net 1024px — وردترین، بەخۆڕایی، لەسەر مۆبایل (دوای یەک جار داگرتنی مۆدێل). */
     suspend fun removeIsNet(
-        ctx: android.content.Context, src: Bitmap, personOnly: Boolean, onStatus: (String) -> Unit
+        ctx: android.content.Context, src: Bitmap, personOnly: Boolean, focusOnly: Boolean,
+        onStatus: (String) -> Unit
     ): Bitmap {
         val mask = IsNet.mask(ctx, src, onStatus)
         val person = if (personOnly) { onStatus("دۆزینەوەی کەسەکە..."); PersonCut.personMask(src) } else null
+        val focus = if (focusOnly) { onStatus("دۆزینەوەی کەسی سەرەکی (فۆکس)..."); PersonCut.focusMask(src) } else null
         onStatus("پاککردنەوەی دەوروبەر و لێوارەکان...")
         return withContext(Dispatchers.Default) {
-            PersonCut.clean(mask, person, src.width, src.height)
+            PersonCut.clean(mask, person, src.width, src.height, focus)
             MaskRefiner.refine(src, mask, light = true)
         }
     }

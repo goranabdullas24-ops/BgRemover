@@ -5,6 +5,10 @@ import android.graphics.Canvas
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.segmentation.Segmentation
 import com.google.mlkit.vision.segmentation.selfie.SelfieSegmenterOptions
+import com.google.mlkit.vision.segmentation.subject.SubjectSegmentation
+import com.google.mlkit.vision.segmentation.subject.SubjectSegmenterOptions
+import kotlin.math.abs
+import kotlin.math.hypot
 import kotlinx.coroutines.tasks.await
 import kotlin.math.max
 import kotlin.math.min
@@ -24,6 +28,77 @@ object PersonCut {
                 .setDetectorMode(SelfieSegmenterOptions.SINGLE_IMAGE_MODE)
                 .build()
         )
+    }
+
+    private val subjects by lazy {
+        SubjectSegmentation.getClient(
+            SubjectSegmenterOptions.Builder()
+                .enableMultipleSubjects(
+                    SubjectSegmenterOptions.SubjectResultOptions.Builder()
+                        .enableConfidenceMask()
+                        .build()
+                )
+                .build()
+        )
+    }
+
+    /**
+     * کەسی سەرەکی (فۆکس): ئەگەر چەند کەس/شت لە وێنەکەدا بێت، ئەوەی ڕوونترە (فۆکس)،
+     * گەورەترە و نزیکترە لە ناوەڕاست هەڵدەبژێرێت. null = تەنها یەک بابەت یان کار نەکرد.
+     */
+    suspend fun focusMask(src: Bitmap): FloatArray? = try {
+        val sc = 768f / max(src.width, src.height)
+        val small = if (sc < 1f) Bitmap.createScaledBitmap(
+            src, (src.width * sc).roundToInt().coerceAtLeast(1),
+            (src.height * sc).roundToInt().coerceAtLeast(1), true
+        ) else src
+        val sw = small.width; val sh = small.height
+        val res = subjects.process(InputImage.fromBitmap(small, 0)).await()
+        val list = res.subjects
+        if (list.size < 2) {
+            if (small != src) small.recycle()
+            null
+        } else {
+            // خۆڵەمێشی بۆ پێوانەی ڕوونی (فۆکس)
+            val px = IntArray(sw * sh)
+            small.getPixels(px, 0, sw, 0, 0, sw, sh)
+            val gray = FloatArray(px.size) {
+                val c = px[it]
+                0.299f * ((c shr 16) and 255) + 0.587f * ((c shr 8) and 255) + 0.114f * (c and 255)
+            }
+            var best: FloatArray? = null
+            var bestScore = -1f
+            for (sub in list) {
+                val buf = sub.confidenceMask ?: continue
+                buf.rewind()
+                val m = FloatArray(sw * sh)
+                for (y in 0 until sub.height) for (x in 0 until sub.width) {
+                    val v = buf.get()
+                    val gx = sub.startX + x; val gy = sub.startY + y
+                    if (gx in 0 until sw && gy in 0 until sh) m[gy * sw + gx] = v
+                }
+                var area = 0; var sharp = 0.0; var ns = 0; var cx = 0.0; var cy = 0.0
+                for (y in 1 until sh - 1) for (x in 1 until sw - 1) {
+                    val i = y * sw + x
+                    if (m[i] < 0.5f) continue
+                    area++; cx += x; cy += y
+                    // تەنها ناوەوەی بابەت (نەک لێوار) بۆ ڕوونی
+                    if (m[i - 1] > 0.5f && m[i + 1] > 0.5f && m[i - sw] > 0.5f && m[i + sw] > 0.5f) {
+                        sharp += abs(4 * gray[i] - gray[i - 1] - gray[i + 1] - gray[i - sw] - gray[i + sw])
+                        ns++
+                    }
+                }
+                if (area == 0) continue
+                val sharpness = (sharp / max(1, ns)).toFloat()
+                val dc = hypot(cx / area / sw - 0.5, cy / area / sh - 0.5).toFloat()  // 0..0.7
+                val score = sqrt(area.toFloat()) * (sharpness + 1f) * (1.2f - dc)
+                if (score > bestScore) { bestScore = score; best = m }
+            }
+            if (small != src) small.recycle()
+            best?.let { resize(it, sw, sh, src.width, src.height) }
+        }
+    } catch (e: Exception) {
+        null
     }
 
     /** ماسکی ئەگەری مرۆڤ (0..1) بە قەبارەی وێنەکە؛ null ئەگەر کار نەکرد. */
@@ -75,9 +150,18 @@ object PersonCut {
      *  ٢. تەنها بەشە سەرەکییەکان دەمێننەوە (پارچە جیاکان لادەبرێن)
      *  ٣. ناوەوەی بابەت تەواو پڕ دەکرێت (نە نیمچە-ڕوون)
      */
-    fun clean(alpha: FloatArray, person: FloatArray?, w: Int, h: Int) {
+    fun clean(alpha: FloatArray, person: FloatArray?, w: Int, h: Int, focus: FloatArray? = null) {
         val n = w * h
         val r = max(4, (min(w, h) * 0.03f).roundToInt())
+
+        // کەسی سەرەکی: هەر شتێک دەرەوەی ئەو کەسە بێت بە تەواوی لادەبرێت
+        var person = person
+        if (focus != null) {
+            val fm = FloatArray(n) { if (focus[it] > 0.5f) 1f else 0f }
+            val fg = MaskOps.box(MaskOps.dilate(fm, w, h, r), w, h, r)
+            for (i in 0 until n) alpha[i] *= min(1f, fg[i] * 1.5f)
+            person = person?.let { p -> FloatArray(n) { p[it] * fm[it] } }
+        }
 
         if (person != null) {
             var cnt = 0
