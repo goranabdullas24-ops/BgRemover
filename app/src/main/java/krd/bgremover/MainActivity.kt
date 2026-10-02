@@ -86,6 +86,12 @@ fun App(vm: MainViewModel = viewModel()) {
         if (ok) vm.loadUri(camUri)
     }
 
+    // کاتێک وێنەیەک هەڵدەبژێردرێت یان کاری بەکۆمەڵ دەست پێدەکات، بگەڕێوە بۆ سەرەوە
+    val mainScroll = rememberScrollState()
+    LaunchedEffect(vm.original, vm.cutout, vm.batch.size) {
+        if (vm.original != null || vm.cutout != null || vm.batch.isNotEmpty()) mainScroll.animateScrollTo(0)
+    }
+
     LaunchedEffect(vm.message) {
         vm.message?.let {
             snack.showSnackbar(it)
@@ -110,7 +116,7 @@ fun App(vm: MainViewModel = viewModel()) {
             Modifier
                 .padding(pad)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(mainScroll)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -168,6 +174,108 @@ fun App(vm: MainViewModel = viewModel()) {
                 }
             }
 
+            // دوگمەکانی داگرتن/لابردن لە سەرەوە
+            if (vm.selectMode && vm.selected.isNotEmpty()) {
+                Button(
+                    onClick = vm::batchFromSelection,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Icon(Icons.Default.AutoFixHigh, null); Spacer(Modifier.width(8.dp))
+                    Text("لابردنی باکگراوندی ${vm.selected.size} وێنە")
+                }
+                OutlinedButton(
+                    onClick = vm::downloadSelected,
+                    enabled = vm.busy == null,
+                    modifier = Modifier.fillMaxWidth().height(52.dp)
+                ) {
+                    Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp))
+                    Text("داگرتنی ${vm.selected.size} وێنە بەبێ لابردنی باکگراوند")
+                }
+            }
+
+            if (vm.batch.isNotEmpty()) {
+                BatchSection(vm, scope)
+            }
+
+            vm.original?.let { bmp ->
+                SectionCard("وێنەی سەرەکی") {
+                    val img = remember(bmp) { bmp.asImageBitmap() }
+                    Image(
+                        img, null,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = vm::saveOriginal,
+                        enabled = vm.busy == null,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp))
+                        Text("داگرتنی وێنەکە بەبێ لابردنی باکگراوند")
+                    }
+                }
+            }
+
+            vm.cutout?.let { cut ->
+                SectionCard("ئەنجام — بێ باکگراوند") {
+                    val shown = vm.display ?: cut
+                    val img = remember(shown) { shown.asImageBitmap() }
+                    val bg = vm.bgColor
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .then(if (bg == null) Modifier.checkerboard() else Modifier.background(Color(bg)))
+                    ) {
+                        Image(
+                            img, null,
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text("ڕەنگی باکگراوند:", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        val colors: List<Int?> = listOf(
+                            null,
+                            Color.White.toArgb(),
+                            Color.Black.toArgb(),
+                            Color(0xFF1E6FD9).toArgb(),
+                            Color(0xFFD93025).toArgb(),
+                            Color(0xFF2E7D32).toArgb()
+                        )
+                        colors.forEach { c -> ColorChip(c, selected = vm.bgColor == c) { vm.bgColor = c } }
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    StrokeControls(vm)
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = vm::save, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp)); Text("پاشەکەوت")
+                        }
+                        OutlinedButton(onClick = {
+                            scope.launch {
+                                val uri = vm.shareUri() ?: return@launch
+                                val send = Intent(Intent.ACTION_SEND).apply {
+                                    type = "image/png"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                ctx.startActivity(Intent.createChooser(send, "ناردن"))
+                            }
+                        }, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Share, null); Spacer(Modifier.width(6.dp)); Text("ناردن")
+                        }
+                    }
+                    TextButton(
+                        onClick = vm::removeBackground,
+                        enabled = vm.busy == null,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) { Text("دووبارە لابردنەوە") }
+                }
+            }
             if (vm.results.isNotEmpty()) {
                 val title = if (vm.selectMode) "${vm.selected.size} وێنە هەڵبژێردراوە"
                             else "${vm.results.size} وێنە دۆزرایەوە — دەستێک بۆ یەکێک، ڕاگرتن بۆ چەندان"
@@ -257,108 +365,8 @@ fun App(vm: MainViewModel = viewModel()) {
                         )
                     }
                 }
-                if (vm.selectMode && vm.selected.isNotEmpty()) {
-                    Button(
-                        onClick = vm::batchFromSelection,
-                        modifier = Modifier.fillMaxWidth().height(52.dp)
-                    ) {
-                        Icon(Icons.Default.AutoFixHigh, null); Spacer(Modifier.width(8.dp))
-                        Text("لابردنی باکگراوندی ${vm.selected.size} وێنە")
-                    }
-                    OutlinedButton(
-                        onClick = vm::downloadSelected,
-                        enabled = vm.busy == null,
-                        modifier = Modifier.fillMaxWidth().height(52.dp)
-                    ) {
-                        Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp))
-                        Text("داگرتنی ${vm.selected.size} وێنە بەبێ لابردنی باکگراوند")
-                    }
-                }
             }
 
-            if (vm.batch.isNotEmpty()) {
-                BatchSection(vm, scope)
-            }
-
-            vm.original?.let { bmp ->
-                SectionCard("وێنەی سەرەکی") {
-                    val img = remember(bmp) { bmp.asImageBitmap() }
-                    Image(
-                        img, null,
-                        modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = vm::saveOriginal,
-                        enabled = vm.busy == null,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp))
-                        Text("داگرتنی وێنەکە بەبێ لابردنی باکگراوند")
-                    }
-                }
-            }
-
-            vm.cutout?.let { cut ->
-                SectionCard("ئەنجام — بێ باکگراوند") {
-                    val shown = vm.display ?: cut
-                    val img = remember(shown) { shown.asImageBitmap() }
-                    val bg = vm.bgColor
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .then(if (bg == null) Modifier.checkerboard() else Modifier.background(Color(bg)))
-                    ) {
-                        Image(
-                            img, null,
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    Text("ڕەنگی باکگراوند:", style = MaterialTheme.typography.labelLarge)
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        val colors: List<Int?> = listOf(
-                            null,
-                            Color.White.toArgb(),
-                            Color.Black.toArgb(),
-                            Color(0xFF1E6FD9).toArgb(),
-                            Color(0xFFD93025).toArgb(),
-                            Color(0xFF2E7D32).toArgb()
-                        )
-                        colors.forEach { c -> ColorChip(c, selected = vm.bgColor == c) { vm.bgColor = c } }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                    StrokeControls(vm)
-                    Spacer(Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = vm::save, modifier = Modifier.weight(1f)) {
-                            Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp)); Text("پاشەکەوت")
-                        }
-                        OutlinedButton(onClick = {
-                            scope.launch {
-                                val uri = vm.shareUri() ?: return@launch
-                                val send = Intent(Intent.ACTION_SEND).apply {
-                                    type = "image/png"
-                                    putExtra(Intent.EXTRA_STREAM, uri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                                ctx.startActivity(Intent.createChooser(send, "ناردن"))
-                            }
-                        }, modifier = Modifier.weight(1f)) {
-                            Icon(Icons.Default.Share, null); Spacer(Modifier.width(6.dp)); Text("ناردن")
-                        }
-                    }
-                    TextButton(
-                        onClick = vm::removeBackground,
-                        enabled = vm.busy == null,
-                        modifier = Modifier.align(Alignment.CenterHorizontally)
-                    ) { Text("دووبارە لابردنەوە") }
-                }
-            }
             Spacer(Modifier.height(24.dp))
         }
     }
