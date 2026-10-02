@@ -1,0 +1,361 @@
+package krd.bgremover
+
+import android.content.Intent
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.ImageLoader
+import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
+
+private val Purple = Color(0xFF5A5A96)
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            MaterialTheme(colorScheme = lightColorScheme(primary = Purple, secondary = Purple)) {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
+                    App()
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun App(vm: MainViewModel = viewModel()) {
+    val ctx = LocalContext.current
+    val focus = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    val snack = remember { SnackbarHostState() }
+    var showSettings by remember { mutableStateOf(false) }
+    val loader = remember { ImageLoader.Builder(ctx).okHttpClient(Net.client).crossfade(true).build() }
+
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let(vm::loadUri)
+    }
+    val camUri = remember { ImageUtils.cameraUri(ctx) }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        if (ok) vm.loadUri(camUri)
+    }
+
+    LaunchedEffect(vm.message) {
+        vm.message?.let {
+            snack.showSnackbar(it)
+            vm.message = null
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("داگرتن و لابردنی باکگراوند") },
+                actions = {
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "ڕێکخستن")
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snack) }
+    ) { pad ->
+        Column(
+            Modifier
+                .padding(pad)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = vm.query,
+                onValueChange = { vm.query = it },
+                label = { Text("ناو یان لینکی وێنە") },
+                placeholder = { Text("بۆ نموونە: گوڵی نێرگز") },
+                leadingIcon = { Icon(Icons.Default.Search, null) },
+                trailingIcon = {
+                    if (vm.query.isNotEmpty()) IconButton(onClick = { vm.query = "" }) {
+                        Icon(Icons.Default.Close, "سڕینەوە")
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { focus.clearFocus(); vm.submit() }),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Button(
+                onClick = { focus.clearFocus(); vm.submit() },
+                enabled = vm.query.isNotBlank() && vm.busy == null,
+                modifier = Modifier.fillMaxWidth().height(52.dp)
+            ) {
+                Icon(Icons.Default.ImageSearch, null)
+                Spacer(Modifier.width(8.dp))
+                Text("گەڕان و داگرتنی وێنە")
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = { cameraLauncher.launch(camUri) },
+                    modifier = Modifier.weight(1f).height(52.dp)
+                ) {
+                    Icon(Icons.Default.PhotoCamera, null); Spacer(Modifier.width(8.dp)); Text("کامێرا")
+                }
+                OutlinedButton(
+                    onClick = {
+                        galleryLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    modifier = Modifier.weight(1f).height(52.dp)
+                ) {
+                    Icon(Icons.Default.PhotoLibrary, null); Spacer(Modifier.width(8.dp)); Text("لە گاڵەری")
+                }
+            }
+
+            vm.busy?.let {
+                Column {
+                    LinearProgressIndicator(Modifier.fillMaxWidth())
+                    Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 4.dp))
+                }
+            }
+
+            if (vm.results.isNotEmpty()) {
+                SectionCard("ئەنجامەکانی گەڕان (${vm.source}) — یەکێک هەڵبژێرە") {
+                    vm.results.chunked(3).forEach { row ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        ) {
+                            row.forEach { item ->
+                                AsyncImage(
+                                    model = item.thumbUrl,
+                                    contentDescription = item.title,
+                                    imageLoader = loader,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1f)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFFEDEDF4))
+                                        .clickable(enabled = vm.busy == null) { vm.pick(item) }
+                                )
+                            }
+                            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                    if (vm.source == "Wikimedia") {
+                        Text(
+                            "بۆ ئەنجامی ڕاستەوخۆی گۆگڵ، کلیلی Serper لە ڕێکخستن (⚙) دابنێ.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Purple
+                        )
+                    }
+                }
+            }
+
+            vm.original?.let { bmp ->
+                SectionCard("وێنەی سەرەکی") {
+                    val img = remember(bmp) { bmp.asImageBitmap() }
+                    Image(
+                        img, null,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+            }
+
+            vm.cutout?.let { cut ->
+                SectionCard("ئەنجام — بێ باکگراوند") {
+                    val img = remember(cut) { cut.asImageBitmap() }
+                    val bg = vm.bgColor
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .then(if (bg == null) Modifier.checkerboard() else Modifier.background(Color(bg)))
+                    ) {
+                        Image(
+                            img, null,
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 420.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text("ڕەنگی باکگراوند:", style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        val colors: List<Int?> = listOf(
+                            null,
+                            Color.White.toArgb(),
+                            Color.Black.toArgb(),
+                            Color(0xFF1E6FD9).toArgb(),
+                            Color(0xFFD93025).toArgb(),
+                            Color(0xFF2E7D32).toArgb()
+                        )
+                        colors.forEach { c -> ColorChip(c, selected = vm.bgColor == c) { vm.bgColor = c } }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = vm::save, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp)); Text("پاشەکەوت")
+                        }
+                        OutlinedButton(onClick = {
+                            scope.launch {
+                                val uri = vm.shareUri() ?: return@launch
+                                val send = Intent(Intent.ACTION_SEND).apply {
+                                    type = "image/png"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                ctx.startActivity(Intent.createChooser(send, "ناردن"))
+                            }
+                        }, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Share, null); Spacer(Modifier.width(6.dp)); Text("ناردن")
+                        }
+                    }
+                    TextButton(
+                        onClick = vm::removeBackground,
+                        enabled = vm.busy == null,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) { Text("دووبارە لابردنەوە") }
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+        }
+    }
+
+    if (showSettings) SettingsDialog(vm) { showSettings = false }
+}
+
+@Composable
+private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F3F8)),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(
+                title,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp)
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun ColorChip(color: Int?, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .then(if (color == null) Modifier.checkerboard(6.dp) else Modifier.background(Color(color)))
+            .border(
+                BorderStroke(if (selected) 3.dp else 1.dp, if (selected) Purple else Color.Gray),
+                CircleShape
+            )
+            .clickable(onClick = onClick)
+    )
+}
+
+private fun Modifier.checkerboard(cell: Dp = 12.dp) = drawBehind {
+    val s = cell.toPx()
+    drawRect(Color.White)
+    val cols = (size.width / s).toInt() + 1
+    val rows = (size.height / s).toInt() + 1
+    for (y in 0 until rows) for (x in 0 until cols) {
+        if ((x + y) % 2 == 0) drawRect(Color(0xFFDADADA), Offset(x * s, y * s), Size(s, s))
+    }
+}
+
+@Composable
+private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
+    var serper by remember { mutableStateOf(vm.serperKey) }
+    var rb by remember { mutableStateOf(vm.removeBgKey) }
+    var useRb by remember { mutableStateOf(vm.useRemoveBg) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("ڕێکخستن") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "گەڕانی گۆگڵ: کلیلێکی بەخۆڕایی لە serper.dev وەربگرە. بەبێ کلیل، لە Wikimedia دەگەڕێت.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                OutlinedTextField(
+                    serper, { serper = it },
+                    label = { Text("Serper API Key") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                HorizontalDivider()
+                Text(
+                    "بۆ وردترین لابردن (بە تایبەت قژ): کلیلی remove.bg. بەبێ ئەوە AI ی ناو مۆبایل بەکاردێت.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                OutlinedTextField(
+                    rb, { rb = it },
+                    label = { Text("remove.bg API Key") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation()
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = useRb, onCheckedChange = { useRb = it }, enabled = rb.isNotBlank())
+                    Spacer(Modifier.width(8.dp))
+                    Text("remove.bg بەکاربهێنە")
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { vm.saveSettings(serper, rb, useRb); onDismiss() }) { Text("پاشەکەوت") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("داخستن") } }
+    )
+}
