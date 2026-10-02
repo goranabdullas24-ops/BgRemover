@@ -74,13 +74,47 @@ object BackgroundRemover {
         onStatus: (String) -> Unit
     ): Bitmap {
         val mask = IsNet.mask(ctx, src, onStatus)
-        val person = if (personOnly) { onStatus("دۆزینەوەی کەسەکە..."); PersonCut.personMask(src) } else null
         val focus = if (focusOnly) { onStatus("دۆزینەوەی کەسی سەرەکی (فۆکس)..."); PersonCut.focusMask(src) } else null
+        if (personOnly && applyModNet(ctx, src, mask, onStatus)) {
+            onStatus("پاککردنەوەی لێوارەکان...")
+            return withContext(Dispatchers.Default) {
+                PersonCut.clean(mask, null, src.width, src.height, focus)
+                MaskRefiner.refine(src, mask, light = true)
+            }
+        }
+        // وێنەکە مرۆڤی تێدا نییە (یان MODNet بەردەست نییە) → شێوازی گشتی
+        val person = if (personOnly) { onStatus("دۆزینەوەی کەسەکە..."); PersonCut.personMask(src) } else null
         onStatus("پاککردنەوەی دەوروبەر و لێوارەکان...")
         return withContext(Dispatchers.Default) {
             PersonCut.clean(mask, person, src.width, src.height, focus)
             MaskRefiner.refine(src, mask, light = true)
         }
+    }
+
+    /**
+     * «تەنها مرۆڤ» بە MODNet: MODNet بڕیار دەدات کام پیکسڵ مرۆڤە؛ IS-Net تەنها لە ناو
+     * ناوچەی مرۆڤەکەدا لێوار ورد دەکاتەوە. هەر شتێکی تر (لۆگۆ، بانەر، ڕەنگ) بە تەواوی لادەبرێت.
+     * فۆرمولا (تاقیکراوەتەوە): alpha = max(mn, min(isnet, 1.3·mn))
+     * false دەگەڕێنێتەوە ئەگەر مرۆڤ نەدۆزرایەوە یان مۆدێل بەردەست نەبوو (mask دەستکاری نەکراوە).
+     */
+    private suspend fun applyModNet(
+        ctx: android.content.Context, src: Bitmap, mask: FloatArray, onStatus: (String) -> Unit
+    ): Boolean {
+        val mn = try {
+            ModNet.mask(ctx, src, onStatus)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            return false
+        }
+        var cnt = 0
+        for (v in mn) if (v > 0.5f) cnt++
+        if (cnt < mn.size / 100) return false
+        for (i in mask.indices) {
+            val m = mn[i]
+            mask[i] = maxOf(m, minOf(mask[i], (m * 1.3f).coerceAtMost(1f)))
+        }
+        return true
     }
 
     /** remove.bg — وردترین ئەنجام (بە تایبەت بۆ قژ). پێویستی بە کلیل و ئینتەرنێتە. */
