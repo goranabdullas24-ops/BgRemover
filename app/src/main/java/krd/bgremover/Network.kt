@@ -10,6 +10,9 @@ import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -70,17 +73,17 @@ object ImageSearch {
 
     /**
      * ئەگەر کلیلی Serper هەبێت → ئەنجامی ڕاستەقینەی Google Images.
-     * ئەگەر نا → Wikimedia Commons (بەخۆڕایی، بێ کلیل).
-     * دەگەڕێتەوە: (ناوی سەرچاوە، لیستی وێنەکان)
+     * ئەگەر نا → چەند سەرچاوەیەکی بەخۆڕایی پێکەوە (ویکیپیدیا، Wikimedia Commons، Openverse).
+     * page لە ١ ەوە دەست پێدەکات؛ بۆ «زیاتر» page زیاد دەکرێت.
      */
-    suspend fun search(query: String, serperKey: String): Pair<String, List<ImageResult>> =
+    suspend fun search(query: String, serperKey: String, page: Int = 1): Pair<String, List<ImageResult>> =
         withContext(Dispatchers.IO) {
-            if (serperKey.isNotBlank()) "Google" to googleViaSerper(query, serperKey.trim())
-            else "Wikipedia" to freeSearch(query)
+            if (serperKey.isNotBlank()) "Google" to googleViaSerper(query, serperKey.trim(), page)
+            else "free" to freeSearch(query, page)
         }
 
-    private fun googleViaSerper(q: String, key: String): List<ImageResult> {
-        val payload = JSONObject().put("q", q).put("num", 30).toString()
+    private fun googleViaSerper(q: String, key: String, page: Int): List<ImageResult> {
+        val payload = JSONObject().put("q", q).put("num", 100).put("page", page).toString()
         val req = Request.Builder()
             .url("https://google.serper.dev/images")
             .header("X-API-KEY", key)
@@ -99,36 +102,37 @@ object ImageSearch {
         return out
     }
 
-    /** بێ کلیل: ویکیپیدیای کوردی + ئینگلیزی (وێنەی سەرەکیی بابەت) + Wikimedia Commons. */
-    private fun freeSearch(q: String): List<ImageResult> {
-        val out = LinkedHashMap<String, ImageResult>()
-        var lastError: Exception? = null
-        var anyOk = false
-        val sources: List<() -> List<ImageResult>> = listOf(
-            { wikipedia("ckb", q) },
-            { wikipedia("en", q) },
-            { wikimedia(q) }
-        )
-        for (src in sources) {
-            try {
-                src().forEach { out.putIfAbsent(it.fullUrl, it) }
-                anyOk = true
-            } catch (e: Exception) {
-                lastError = e
+    /** سەرچاوە بەخۆڕاییەکان بە هاوکاتی؛ ئەگەر یەکێکیان کار نەکات ئەوانی تر بەردەوام دەبن. */
+    private suspend fun freeSearch(q: String, page: Int): List<ImageResult> = coroutineScope {
+        val jobs = buildList<suspend () -> List<ImageResult>> {
+            if (page <= 3) {
+                // وێنەی سەرەکیی بابەتەکانی ویکیپیدیا: زۆر پەیوەندیدار بە ناوی کەس و شوێن
+                add { wikipedia("ckb", q, page) }
+                add { wikipedia("en", q, page) }
+                add { wikipedia("ar", q, page) }
             }
-        }
-        if (!anyOk && lastError != null) throw lastError!!
-        return out.values.toList()
+            add { wikimedia(q, page) }
+            add { openverse(q, page) }
+        }.map { f -> async { runCatching { f() } } }
+        val results = jobs.awaitAll()
+        if (results.all { it.isFailure }) throw results.first().exceptionOrNull()!!
+        val out = LinkedHashMap<String, ImageResult>()
+        // تێکەڵکردن بە نۆرە بۆ ئەوەی هەموو سەرچاوەکان لە سەرەتادا دەربکەون
+        val lists = results.mapNotNull { it.getOrNull() }
+        val maxLen = lists.maxOfOrNull { it.size } ?: 0
+        for (i in 0 until maxLen) for (l in lists) if (i < l.size) out.putIfAbsent(l[i].fullUrl, l[i])
+        out.values.toList()
     }
 
-    private fun wikipedia(lang: String, q: String): List<ImageResult> {
+    private fun wikipedia(lang: String, q: String, page: Int): List<ImageResult> {
         val url = HttpUrl.Builder()
             .scheme("https").host("$lang.wikipedia.org").addPathSegments("w/api.php")
             .addQueryParameter("action", "query")
             .addQueryParameter("format", "json")
             .addQueryParameter("generator", "search")
             .addQueryParameter("gsrsearch", q)
-            .addQueryParameter("gsrlimit", "10")
+            .addQueryParameter("gsrlimit", "20")
+            .addQueryParameter("gsroffset", ((page - 1) * 20).toString())
             .addQueryParameter("prop", "pageimages")
             .addQueryParameter("piprop", "original|thumbnail")
             .addQueryParameter("pithumbsize", "400")
@@ -147,7 +151,7 @@ object ImageSearch {
         return items.sortedBy { it.first }.map { it.second }
     }
 
-    private fun wikimedia(q: String): List<ImageResult> {
+    private fun wikimedia(q: String, page: Int): List<ImageResult> {
         val url = HttpUrl.Builder()
             .scheme("https").host("commons.wikimedia.org").addPathSegments("w/api.php")
             .addQueryParameter("action", "query")
@@ -155,7 +159,8 @@ object ImageSearch {
             .addQueryParameter("generator", "search")
             .addQueryParameter("gsrsearch", "$q filetype:bitmap")
             .addQueryParameter("gsrnamespace", "6")
-            .addQueryParameter("gsrlimit", "30")
+            .addQueryParameter("gsrlimit", "50")
+            .addQueryParameter("gsroffset", ((page - 1) * 50).toString())
             .addQueryParameter("prop", "imageinfo")
             .addQueryParameter("iiprop", "url|mime")
             .addQueryParameter("iiurlwidth", "400")
@@ -174,6 +179,27 @@ object ImageSearch {
             items += p.optInt("index", 999) to ImageResult(full, thumb, p.optString("title"))
         }
         return items.sortedBy { it.first }.map { it.second }
+    }
+
+    /** Openverse: کتێبخانەی کراوەی +٨٠٠ ملیۆن وێنە (Flickr، میوزەخانەکان...). بێ کلیل. */
+    private fun openverse(q: String, page: Int): List<ImageResult> {
+        val url = HttpUrl.Builder()
+            .scheme("https").host("api.openverse.org").addPathSegments("v1/images/")
+            .addQueryParameter("q", q)
+            .addQueryParameter("page", page.toString())
+            .addQueryParameter("page_size", "20")
+            .addQueryParameter("mature", "false")
+            .build()
+        val json = JSONObject(String(Net.bytes(Request.Builder().url(url).build())))
+        val arr = json.optJSONArray("results") ?: return emptyList()
+        val out = ArrayList<ImageResult>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val full = o.optString("url")
+            if (full.isBlank() || full.endsWith(".svg", true)) continue
+            out += ImageResult(full, o.optString("thumbnail").ifBlank { full }, o.optString("title"))
+        }
+        return out
     }
 }
 

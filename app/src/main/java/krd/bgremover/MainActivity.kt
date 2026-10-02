@@ -13,6 +13,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -64,7 +66,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun App(vm: MainViewModel = viewModel()) {
     val ctx = LocalContext.current
@@ -74,9 +76,10 @@ fun App(vm: MainViewModel = viewModel()) {
     var showSettings by remember { mutableStateOf(false) }
     val loader = remember { ImageLoader.Builder(ctx).okHttpClient(Net.client).crossfade(true).build() }
 
-    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        uri?.let(vm::loadUri)
-    }
+    // چەند وێنەیەک پێکەوە (تا ٣٠)؛ یەک وێنە = شێوازی ئاسایی، زیاتر = بەکۆمەڵ
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(30)
+    ) { uris -> vm.batchFromUris(uris) }
     val camUri = remember { ImageUtils.cameraUri(ctx) }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         if (ok) vm.loadUri(camUri)
@@ -165,37 +168,107 @@ fun App(vm: MainViewModel = viewModel()) {
             }
 
             if (vm.results.isNotEmpty()) {
-                SectionCard("ئەنجامەکانی گەڕان (${vm.source}) — یەکێک هەڵبژێرە") {
+                val title = if (vm.selectMode) "${vm.selected.size} وێنە هەڵبژێردراوە"
+                            else "${vm.results.size} وێنە دۆزرایەوە — دەستێک بۆ یەکێک، ڕاگرتن بۆ چەندان"
+                SectionCard(title) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                    ) {
+                        if (vm.selectMode) {
+                            OutlinedButton(onClick = vm::selectAll, modifier = Modifier.weight(1f)) { Text("هەمووی") }
+                            OutlinedButton(onClick = vm::cancelSelect, modifier = Modifier.weight(1f)) { Text("هەڵوەشاندنەوە") }
+                        } else {
+                            OutlinedButton(onClick = { vm.startSelect(null) }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Checklist, null); Spacer(Modifier.width(6.dp))
+                                Text("هەڵبژاردنی چەند وێنەیەک")
+                            }
+                        }
+                    }
                     vm.results.chunked(3).forEach { row ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             modifier = Modifier.padding(bottom = 6.dp)
                         ) {
                             row.forEach { item ->
-                                AsyncImage(
-                                    model = item.thumbUrl,
-                                    contentDescription = item.title,
-                                    imageLoader = loader,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
+                                val sel = item.fullUrl in vm.selected
+                                Box(
+                                    Modifier
                                         .weight(1f)
                                         .aspectRatio(1f)
                                         .clip(RoundedCornerShape(10.dp))
                                         .background(Color(0xFFEDEDF4))
-                                        .clickable(enabled = vm.busy == null) { vm.pick(item) }
-                                )
+                                        .border(
+                                            if (sel) 3.dp else 0.dp,
+                                            if (sel) Purple else Color.Transparent,
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (vm.selectMode) vm.toggleSelect(item)
+                                                else if (vm.busy == null) vm.pick(item)
+                                            },
+                                            onLongClick = { vm.startSelect(item) }
+                                        )
+                                ) {
+                                    AsyncImage(
+                                        model = item.thumbUrl,
+                                        contentDescription = item.title,
+                                        imageLoader = loader,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                    if (vm.selectMode) {
+                                        Icon(
+                                            if (sel) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                            null,
+                                            tint = if (sel) Purple else Color.White,
+                                            modifier = Modifier
+                                                .align(Alignment.TopEnd)
+                                                .padding(4.dp)
+                                                .background(Color(0x66000000), CircleShape)
+                                        )
+                                    }
+                                }
                             }
                             repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
-                    if (vm.source == "Wikipedia") {
+                    if (vm.canLoadMore) {
+                        OutlinedButton(
+                            onClick = vm::loadMore,
+                            enabled = !vm.loadingMore,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (vm.loadingMore) {
+                                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                            }
+                            Text("وێنەی زیاتر")
+                        }
+                    }
+                    if (vm.source == "free") {
                         Text(
-                            "بۆ ئەنجامی ڕاستەوخۆی گۆگڵ، کلیلی Serper لە ڕێکخستن (⚙) دابنێ.",
+                            "سەرچاوە: ویکیپیدیا، Wikimedia Commons، Openverse. بۆ ئەنجامی ڕاستەوخۆی گۆگڵ، کلیلی Serper لە ⚙ دابنێ.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Purple
+                            color = Purple,
+                            modifier = Modifier.padding(top = 6.dp)
                         )
                     }
                 }
+                if (vm.selectMode && vm.selected.isNotEmpty()) {
+                    Button(
+                        onClick = vm::batchFromSelection,
+                        modifier = Modifier.fillMaxWidth().height(52.dp)
+                    ) {
+                        Icon(Icons.Default.AutoFixHigh, null); Spacer(Modifier.width(8.dp))
+                        Text("لابردنی باکگراوندی ${vm.selected.size} وێنە")
+                    }
+                }
+            }
+
+            if (vm.batch.isNotEmpty()) {
+                BatchSection(vm, scope)
             }
 
             vm.original?.let { bmp ->
@@ -270,6 +343,107 @@ fun App(vm: MainViewModel = viewModel()) {
     }
 
     if (showSettings) SettingsDialog(vm) { showSettings = false }
+}
+
+@Composable
+private fun BatchSection(vm: MainViewModel, scope: kotlinx.coroutines.CoroutineScope) {
+    val ctx = LocalContext.current
+    val done = vm.batch.count { it.status == BatchItem.Status.DONE }
+    val failed = vm.batch.count { it.status == BatchItem.Status.ERROR }
+    SectionCard("بەکۆمەڵ: $done لە ${vm.batch.size} تەواو بوو" + if (failed > 0) " ($failed سەرنەکەوت)" else "") {
+        vm.batchStatus?.let {
+            LinearProgressIndicator(
+                progress = { (done + failed).toFloat() / vm.batch.size.coerceAtLeast(1) },
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 4.dp))
+        }
+        vm.batch.chunked(3).forEach { row ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(bottom = 6.dp)
+            ) {
+                row.forEach { item ->
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .then(
+                                if (vm.bgColor == null) Modifier.checkerboard(8.dp)
+                                else Modifier.background(Color(vm.bgColor!!))
+                            )
+                            .clickable(enabled = item.status == BatchItem.Status.DONE) { vm.openBatchItem(item) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        item.thumb?.let { t ->
+                            val img = remember(t) { t.asImageBitmap() }
+                            Image(img, null, contentScale = ContentScale.Fit, modifier = Modifier.fillMaxSize())
+                        }
+                        when (item.status) {
+                            BatchItem.Status.WORKING ->
+                                CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                            BatchItem.Status.WAITING ->
+                                Icon(Icons.Default.HourglassEmpty, null, tint = Color.Gray)
+                            BatchItem.Status.ERROR ->
+                                Text("✗\n${item.error ?: ""}", color = Color(0xFFD93025),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(4.dp))
+                            BatchItem.Status.DONE -> {}
+                        }
+                    }
+                }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+        }
+        Text("ڕەنگی باکگراوند بۆ هەمووی:", style = MaterialTheme.typography.labelLarge)
+        Spacer(Modifier.height(6.dp))
+        ColorRow(vm)
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = vm::saveAll, enabled = done > 0, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.Download, null); Spacer(Modifier.width(4.dp)); Text("پاشەکەوتی هەموو")
+            }
+            OutlinedButton(onClick = {
+                scope.launch {
+                    val uris = vm.shareAllUris()
+                    if (uris.isEmpty()) return@launch
+                    val send = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                        type = "image/png"
+                        putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    ctx.startActivity(Intent.createChooser(send, "ناردن"))
+                }
+            }, enabled = done > 0, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.Share, null); Spacer(Modifier.width(4.dp)); Text("ناردنی هەموو")
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (vm.batchStatus != null) {
+                TextButton(onClick = vm::stopBatch) { Text("وەستاندن") }
+            } else if (failed > 0) {
+                TextButton(onClick = vm::retryFailed) { Text("دووبارە هەوڵدانەوە") }
+            }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = vm::clearBatch) { Text("سڕینەوەی لیست") }
+        }
+    }
+}
+
+@Composable
+private fun ColorRow(vm: MainViewModel) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        val colors: List<Int?> = listOf(
+            null,
+            Color.White.toArgb(),
+            Color.Black.toArgb(),
+            Color(0xFF1E6FD9).toArgb(),
+            Color(0xFFD93025).toArgb(),
+            Color(0xFF2E7D32).toArgb()
+        )
+        colors.forEach { c -> ColorChip(c, selected = vm.bgColor == c) { vm.bgColor = c } }
+    }
 }
 
 @Composable

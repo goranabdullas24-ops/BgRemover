@@ -84,7 +84,18 @@ object IsNet {
         withContext(Dispatchers.Default) {
             val sess = session(file)
             val n = S * S
-            val inp = Bitmap.createScaledBitmap(src, S, S, true)
+            // پاراستنی ڕێژەی درێژی/پانی: وێنەکە لەناو چوارگۆشەیەکدا دادەنرێت (نەک ڕاکێشان)
+            // تاقیکراوەتەوە: ئەنجامی وردتر دەدات بە تایبەت بۆ دەست، قژ و لێوار
+            val side = max(src.width, src.height)
+            val ox = (side - src.width) / 2
+            val oy = (side - src.height) / 2
+            val padded = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+            android.graphics.Canvas(padded).apply {
+                drawColor(meanColor(src))
+                drawBitmap(src, ox.toFloat(), oy.toFloat(), null)
+            }
+            val inp = Bitmap.createScaledBitmap(padded, S, S, true)
+            padded.recycle()
             val px = IntArray(n)
             inp.getPixels(px, 0, S, 0, 0, S, S)
 
@@ -119,10 +130,22 @@ object IsNet {
                 gray[i] = (0xFF shl 24) or (v shl 16) or (v shl 8) or v
             }
             val small = Bitmap.createBitmap(gray, S, S, Bitmap.Config.ARGB_8888)
-            val big = Bitmap.createScaledBitmap(small, src.width, src.height, true)
+            val big = Bitmap.createScaledBitmap(small, side, side, true)
             val bp = IntArray(src.width * src.height)
-            big.getPixels(bp, 0, src.width, 0, 0, src.width, src.height)
+            big.getPixels(bp, 0, src.width, ox, oy, src.width, src.height)
+            big.recycle(); small.recycle(); inp.recycle()
             FloatArray(bp.size) { ((bp[it] shr 8) and 255) / 255f }
         }
+    }
+
+    /** ڕەنگی ناوەندی وێنە بۆ پڕکردنەوەی دەوروبەر. */
+    private fun meanColor(b: Bitmap): Int {
+        val t = Bitmap.createScaledBitmap(b, 16, 16, true)
+        val p = IntArray(256)
+        t.getPixels(p, 0, 16, 0, 0, 16, 16)
+        var r = 0L; var g = 0L; var bl = 0L
+        for (c in p) { r += (c shr 16) and 255; g += (c shr 8) and 255; bl += c and 255 }
+        if (t != b) t.recycle()
+        return (0xFF shl 24) or ((r / 256).toInt() shl 16) or ((g / 256).toInt() shl 8) or (bl / 256).toInt()
     }
 }

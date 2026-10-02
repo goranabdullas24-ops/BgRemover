@@ -31,6 +31,13 @@ jobs:
           echo "- commons.wikimedia.org: HTTP $code, images: $n"
           img=$(python3 -c "import json;d=json.load(open('r.json'));print(next(iter(d['query']['pages'].values()))['imageinfo'][0]['url'])" 2>/dev/null)
           [ -n "$img" ] && echo "- image download: HTTP $(curl -s -o /dev/null -w '%{http_code}' -A "$UA" "$img")"
+          BUA="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Mobile Safari/537.36"
+          for q in "$Q" "white tiger"; do
+            code=$(curl -s -G -o r.json -w '%{http_code}' -A "$BUA" --data-urlencode "q=$q" \
+              "https://api.openverse.org/v1/images/?page=1&page_size=20&mature=false")
+            n=$(python3 -c "import json;print(len(json.load(open('r.json')).get('results',[])))" 2>/dev/null || echo "?")
+            echo "- openverse ($q): HTTP $code, images: $n"
+          done
           } | tee search-test.md
 
       - uses: actions/setup-java@v5
