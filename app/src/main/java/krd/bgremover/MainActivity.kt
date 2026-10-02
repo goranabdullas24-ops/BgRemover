@@ -3,6 +3,7 @@ package krd.bgremover
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.viewModels
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -54,15 +55,31 @@ import kotlin.math.roundToInt
 private val Purple = Color(0xFF5A5A96)
 
 class MainActivity : ComponentActivity() {
+    private val vm: MainViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Purple, secondary = Purple)) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-                    App()
+                    App(vm)
                 }
             }
+        }
+    }
+
+    /** کاتێک دەچیتە سەر ئەپێکی تر: دۆخ پاشەکەوت دەکرێت. */
+    override fun onStop() {
+        super.onStop()
+        vm.persist()
+    }
+
+    /** ئەندرۆید داوای بیرگە دەکات: مۆدێلەکانی AI ئازاد دەکرێن (پاشان خۆکارانە دووبارە بار دەبنەوە). */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_UI_HIDDEN && vm.busy == null && vm.batchStatus == null) {
+            IsNet.release(); ModNet.release(); Upscaler.release()
         }
     }
 }

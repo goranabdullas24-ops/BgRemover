@@ -33,6 +33,13 @@ object ModNet {
     private var session: OrtSession? = null
     private val lock = Mutex()
 
+    /** کاتێک ئەپ دەچێتە پشتەوە بیرگەی مۆدێل ئازاد دەکات (ئەگەر لە کاردا نەبێت). */
+    fun release() {
+        if (lock.tryLock()) {
+            try { session?.close(); session = null } catch (_: Exception) {} finally { lock.unlock() }
+        }
+    }
+
     private suspend fun ensureModel(ctx: Context, onProgress: (Int) -> Unit): File =
         withContext(Dispatchers.IO) {
             val f = File(ctx.filesDir, MODEL_FILE)

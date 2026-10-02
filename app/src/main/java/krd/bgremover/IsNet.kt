@@ -30,6 +30,13 @@ object IsNet {
     private var session: OrtSession? = null
     private val lock = Mutex()
 
+    /** کاتێک ئەپ دەچێتە پشتەوە بیرگەی مۆدێل ئازاد دەکات (ئەگەر لە کاردا نەبێت). */
+    fun release() {
+        if (lock.tryLock()) {
+            try { session?.close(); session = null } catch (_: Exception) {} finally { lock.unlock() }
+        }
+    }
+
     fun isDownloaded(ctx: Context): Boolean =
         File(ctx.filesDir, MODEL_FILE).let { it.exists() && it.length() > MIN_BYTES }
 

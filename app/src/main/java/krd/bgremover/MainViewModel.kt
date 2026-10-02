@@ -39,6 +39,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val prefs = app.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
+    // ───────── پاشەکەوتی دۆخ: ئەگەر ئەندرۆید ئەپەکەی لە پشتەوە داخست، وەک خۆی دەگەڕێتەوە ─────────
+    private val stateDir = File(app.filesDir, "state").apply { mkdirs() }
+    private val stateJson = File(stateDir, "state.json")
+    private val originalFile = File(stateDir, "original.png")
+    private val cutoutFile = File(stateDir, "cutout.png")
+    private var savedOriginal: Bitmap? = null
+    private var savedCutout: Bitmap? = null
+    private var restoring = true
+
     var query by mutableStateOf("")
     var results by mutableStateOf<List<ImageResult>>(emptyList())
     var source by mutableStateOf("")
@@ -491,7 +500,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (batchJob?.isActive == true) return   // کارەکە بەردەوامە و وێنە نوێیەکانیش دەگرێتەوە
         batchJob = viewModelScope.launch {
             val app = getApplication<Application>()
-            val dir = File(app.cacheDir, "batch").apply { mkdirs() }
+            val dir = File(app.filesDir, "batch").apply { mkdirs() }
             while (true) {
                 val item = batch.firstOrNull { it.status == BatchItem.Status.WAITING } ?: break
                 val done = batch.count { it.status == BatchItem.Status.DONE || it.status == BatchItem.Status.ERROR }
@@ -604,5 +613,134 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         out
+    }
+
+    // ───────────────────────── پاشەکەوت / گەڕاندنەوەی دۆخ ─────────────────────────
+
+    init {
+        viewModelScope.launch { restoreState() }
+    }
+
+    private fun resultToJson(r: ImageResult) = org.json.JSONObject()
+        .put("f", r.fullUrl).put("t", r.thumbUrl).put("ti", r.title)
+        .put("p", r.pageUrl).put("w", r.width).put("h", r.height)
+
+    private fun resultFromJson(o: org.json.JSONObject) = ImageResult(
+        o.optString("f"), o.optString("t"), o.optString("ti"),
+        o.optString("p"), o.optInt("w"), o.optInt("h")
+    )
+
+    /** کاتێک ئەپ دەچێتە پشتەوە بانگ دەکرێت (onStop). */
+    fun persist() {
+        if (restoring) return
+        val o = org.json.JSONObject()
+            .put("query", query).put("lastQuery", lastQuery).put("page", page)
+            .put("source", source).put("canLoadMore", canLoadMore)
+            .put("bgColor", bgColor ?: org.json.JSONObject.NULL)
+            .put("upscaled", upscaled).put("lowQuality", lowQuality)
+            .put("originalUrl", originalUrl ?: "").put("originalFallback", originalFallback ?: "")
+            .put("hasOriginal", original != null).put("hasCutout", cutout != null)
+            .put("nextId", nextId)
+        val ra = org.json.JSONArray()
+        results.forEach { ra.put(resultToJson(it)) }
+        o.put("results", ra)
+        val ba = org.json.JSONArray()
+        batch.forEach { b ->
+            ba.put(
+                org.json.JSONObject().put("id", b.id).put("url", b.url ?: "")
+                    .put("fb", b.fallbackUrl ?: "").put("ref", b.referer ?: "")
+                    .put("uri", b.uri?.toString() ?: "")
+                    // ئەوەی لە کاردا بوو دووبارە دەکرێتەوە
+                    .put("st", if (b.status == BatchItem.Status.WORKING) "WAITING" else b.status.name)
+                    .put("file", b.file?.absolutePath ?: "").put("err", b.error ?: "")
+            )
+        }
+        o.put("batch", ba)
+        val orig = original
+        val cut = cutout
+        // بە هاوکاتی پاشەکەوت دەکرێت؛ تەنها ئەگەر وێنەکە گۆڕابێت
+        kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+            try {
+                if (orig != null && orig !== savedOriginal) {
+                    originalFile.outputStream().use { orig.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    savedOriginal = orig
+                } else if (orig == null) originalFile.delete()
+                if (cut != null && cut !== savedCutout) {
+                    cutoutFile.outputStream().use { cut.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    savedCutout = cut
+                } else if (cut == null) cutoutFile.delete()
+                val tmp = File(stateDir, "state.json.tmp")
+                tmp.writeText(o.toString())
+                tmp.renameTo(stateJson)
+            } catch (_: Throwable) {
+            }
+        }
+    }
+
+    private fun decodeState(f: File): Bitmap? = try {
+        if (f.exists()) ImageDecoder.decodeBitmap(ImageDecoder.createSource(f)) { d, _, _ ->
+            d.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            d.isMutableRequired = true
+        } else null
+    } catch (_: Throwable) { null }
+
+    private suspend fun restoreState() {
+        try {
+            if (!stateJson.exists()) return
+            val o = withContext(Dispatchers.IO) { org.json.JSONObject(stateJson.readText()) }
+            query = o.optString("query")
+            lastQuery = o.optString("lastQuery")
+            page = o.optInt("page", 1)
+            source = o.optString("source")
+            canLoadMore = o.optBoolean("canLoadMore")
+            bgColor = if (o.isNull("bgColor")) null else o.optInt("bgColor")
+            lowQuality = o.optBoolean("lowQuality")
+            originalUrl = o.optString("originalUrl").ifBlank { null }
+            originalFallback = o.optString("originalFallback").ifBlank { null }
+            nextId = o.optInt("nextId", 1)
+            val ra = o.optJSONArray("results")
+            if (ra != null) results = List(ra.length()) { resultFromJson(ra.getJSONObject(it)) }
+
+            val orig = if (o.optBoolean("hasOriginal")) withContext(Dispatchers.IO) { decodeState(originalFile) } else null
+            val cut = if (o.optBoolean("hasCutout")) withContext(Dispatchers.IO) { decodeState(cutoutFile) } else null
+            savedOriginal = orig; savedCutout = cut
+            original = orig
+            cutout = cut
+            upscaled = o.optBoolean("upscaled") && cut != null
+
+            val ba = o.optJSONArray("batch")
+            if (ba != null) {
+                for (i in 0 until ba.length()) {
+                    val b = ba.getJSONObject(i)
+                    val file = b.optString("file").ifBlank { null }?.let { File(it) }?.takeIf { it.exists() }
+                    var st = runCatching { BatchItem.Status.valueOf(b.optString("st")) }.getOrDefault(BatchItem.Status.WAITING)
+                    if (st == BatchItem.Status.DONE && file == null) st = BatchItem.Status.WAITING
+                    val thumb = if (file != null) withContext(Dispatchers.IO) {
+                        decodeState(file)?.let { full ->
+                            val sc = 320f / max(full.width, full.height)
+                            Bitmap.createScaledBitmap(
+                                full, (full.width * sc).toInt().coerceAtLeast(1),
+                                (full.height * sc).toInt().coerceAtLeast(1), true
+                            ).also { if (it !== full) full.recycle() }
+                        }
+                    } else null
+                    batch += BatchItem(
+                        id = b.optInt("id"),
+                        url = b.optString("url").ifBlank { null },
+                        fallbackUrl = b.optString("fb").ifBlank { null },
+                        referer = b.optString("ref").ifBlank { null },
+                        uri = b.optString("uri").ifBlank { null }?.let { Uri.parse(it) },
+                        status = st, thumb = thumb, file = file,
+                        error = b.optString("err").ifBlank { null }
+                    )
+                }
+            }
+        } catch (_: Throwable) {
+        } finally {
+            restoring = false
+        }
+        // ئەو کارانەی کە لە کاتی داخستندا تەواو نەبوون بەردەوام دەبن
+        if (original != null && cutout == null) removeBackground()
+        if (batch.any { it.status == BatchItem.Status.WAITING }) runBatch()
     }
 }
