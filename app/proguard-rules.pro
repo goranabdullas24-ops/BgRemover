@@ -7,3 +7,4 @@
 -dontwarn org.openjsse.**
 -keep class ai.onnxruntime.** { *; }
 -dontwarn ai.onnxruntime.**
+-keep class com.google.mlkit.vision.segmentation.** { *; }

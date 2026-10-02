@@ -49,6 +49,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 private val Purple = Color(0xFF5A5A96)
 
@@ -284,7 +285,8 @@ fun App(vm: MainViewModel = viewModel()) {
 
             vm.cutout?.let { cut ->
                 SectionCard("ئەنجام — بێ باکگراوند") {
-                    val img = remember(cut) { cut.asImageBitmap() }
+                    val shown = vm.display ?: cut
+                    val img = remember(shown) { shown.asImageBitmap() }
                     val bg = vm.bgColor
                     Box(
                         Modifier
@@ -312,6 +314,8 @@ fun App(vm: MainViewModel = viewModel()) {
                         )
                         colors.forEach { c -> ColorChip(c, selected = vm.bgColor == c) { vm.bgColor = c } }
                     }
+                    Spacer(Modifier.height(10.dp))
+                    StrokeControls(vm)
                     Spacer(Modifier.height(12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = vm::save, modifier = Modifier.weight(1f)) {
@@ -399,6 +403,8 @@ private fun BatchSection(vm: MainViewModel, scope: kotlinx.coroutines.CoroutineS
         Text("ڕەنگی باکگراوند بۆ هەمووی:", style = MaterialTheme.typography.labelLarge)
         Spacer(Modifier.height(6.dp))
         ColorRow(vm)
+        Spacer(Modifier.height(8.dp))
+        StrokeControls(vm)
         Spacer(Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = vm::saveAll, enabled = done > 0, modifier = Modifier.weight(1f)) {
@@ -427,6 +433,31 @@ private fun BatchSection(vm: MainViewModel, scope: kotlinx.coroutines.CoroutineS
             }
             Spacer(Modifier.weight(1f))
             TextButton(onClick = vm::clearBatch) { Text("سڕینەوەی لیست") }
+        }
+    }
+}
+
+@Composable
+private fun StrokeControls(vm: MainViewModel) {
+    Text(
+        if (vm.strokeLevel == 0) "سترۆک (هێڵی دەوروبەر): نییە" else "سترۆک (هێڵی دەوروبەر): ${vm.strokeLevel}",
+        style = MaterialTheme.typography.labelLarge
+    )
+    Slider(
+        value = vm.strokeLevel.toFloat(),
+        onValueChange = { vm.strokeLevel = it.roundToInt() },
+        onValueChangeFinished = { vm.updateStroke() },
+        valueRange = 0f..12f,
+        steps = 11
+    )
+    if (vm.strokeLevel > 0) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            listOf(
+                Color.White, Color.Black, Color(0xFFFFC107), Color(0xFFD93025), Color(0xFF1E6FD9)
+            ).forEach { c ->
+                val argb = c.toArgb()
+                ColorChip(argb, selected = vm.strokeColor == argb) { vm.updateStroke(color = argb) }
+            }
         }
     }
 }
@@ -502,6 +533,15 @@ private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = vm.personOnly, onCheckedChange = { vm.setPersonOnly(it) })
+                    Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text("تەنها مرۆڤ", fontWeight = FontWeight.Medium)
+                        Text("شتی زیادە لادەبات و لەشی کەسەکە پڕ دەکات", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                    }
+                }
+                HorizontalDivider()
                 Text("شێوازی لابردنی باکگراوند:", fontWeight = FontWeight.Medium)
                 EngineOption("isnet", eng, "IS-Net 1024 (وردترین، بەخۆڕایی)",
                     "یەکەم جار مۆدێلێک دادەبەزێت (~٤٧ MB)، پاشان بێ ئینتەرنێت") { eng = it }

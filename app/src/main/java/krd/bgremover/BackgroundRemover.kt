@@ -30,7 +30,7 @@ object BackgroundRemover {
     }
 
     /** لەسەر مۆبایل: ML Kit + وردکردنەوەی لێوار. بێ ئینتەرنێت کار دەکات. */
-    suspend fun removeOnDevice(src: Bitmap, onStatus: (String) -> Unit = {}): Bitmap {
+    suspend fun removeOnDevice(src: Bitmap, personOnly: Boolean = false, onStatus: (String) -> Unit = {}): Bitmap {
         val input = InputImage.fromBitmap(src, 0)
         var attempt = 0
         var result: SubjectSegmentationResult? = null
@@ -49,6 +49,7 @@ object BackgroundRemover {
         val buf = result!!.foregroundConfidenceMask
             ?: throw IllegalStateException("هیچ کەس یان شتێک لە وێنەکەدا نەدۆزرایەوە")
 
+        val person = if (personOnly) PersonCut.personMask(src) else null
         return withContext(Dispatchers.Default) {
             val w = src.width
             val h = src.height
@@ -59,15 +60,22 @@ object BackgroundRemover {
             val mask = FloatArray(w * h)
             buf.get(mask)
             onStatus("وردکردنەوەی لێوارەکان...")
+            PersonCut.clean(mask, person, w, h)
             MaskRefiner.refine(src, mask)
         }
     }
 
     /** IS-Net 1024px — وردترین، بەخۆڕایی، لەسەر مۆبایل (دوای یەک جار داگرتنی مۆدێل). */
-    suspend fun removeIsNet(ctx: android.content.Context, src: Bitmap, onStatus: (String) -> Unit): Bitmap {
+    suspend fun removeIsNet(
+        ctx: android.content.Context, src: Bitmap, personOnly: Boolean, onStatus: (String) -> Unit
+    ): Bitmap {
         val mask = IsNet.mask(ctx, src, onStatus)
-        onStatus("پاککردنەوەی لێوارەکان...")
-        return withContext(Dispatchers.Default) { MaskRefiner.refine(src, mask, light = true) }
+        val person = if (personOnly) { onStatus("دۆزینەوەی کەسەکە..."); PersonCut.personMask(src) } else null
+        onStatus("پاککردنەوەی دەوروبەر و لێوارەکان...")
+        return withContext(Dispatchers.Default) {
+            PersonCut.clean(mask, person, src.width, src.height)
+            MaskRefiner.refine(src, mask, light = true)
+        }
     }
 
     /** remove.bg — وردترین ئەنجام (بە تایبەت بۆ قژ). پێویستی بە کلیل و ئینتەرنێتە. */

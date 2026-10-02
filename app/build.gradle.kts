@@ -12,8 +12,8 @@ android {
         applicationId = "krd.bgremover"
         minSdk = 29
         targetSdk = 35
-        versionCode = 5
-        versionName = "3.1"
+        versionCode = 6
+        versionName = "3.2"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
@@ -55,4 +55,6 @@ dependencies {
 
     // لابردنی باکگراوند لەسەر مۆبایل (بێ ئینتەرنێت)
     implementation("com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1")
+    // دۆزینەوەی مرۆڤ بۆ «تەنها مرۆڤ» (مۆدێلی بچووک لەناو ئەپدایە)
+    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta6")
 }

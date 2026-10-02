@@ -74,7 +74,46 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     )
         private set
 
+    /** تەنها مرۆڤەکە بمێنێتەوە (شتی زیادە لادەبرێت). */
+    var personOnly by mutableStateOf(prefs.getBoolean("person_only", true))
+        private set
+
+    // سترۆک (هێڵی دەوروبەری کەسەکە)
+    var strokeLevel by mutableStateOf(prefs.getInt("stroke_level", 0))
+    var strokeColor by mutableStateOf(prefs.getInt("stroke_color", android.graphics.Color.WHITE))
+    /** پێشبینینی ئەنجام لەگەڵ سترۆک (بێ باکگراوند). */
+    var display by mutableStateOf<Bitmap?>(null)
+    private var displayJob: Job? = null
+
     private var job: Job? = null
+
+    fun setPersonOnly(v: Boolean) {
+        personOnly = v
+        prefs.edit().putBoolean("person_only", v).apply()
+    }
+
+    private fun strokePx(b: Bitmap): Int =
+        if (strokeLevel <= 0) 0 else max(1, (strokeLevel * minOf(b.width, b.height) / 250f).toInt())
+
+    /** ئەنجامی کۆتایی: سترۆک + ڕەنگی باکگراوند. */
+    fun compose(fg: Bitmap): Bitmap =
+        ImageUtils.withBackground(PersonCut.withStroke(fg, strokePx(fg), strokeColor), bgColor)
+
+    fun updateStroke(level: Int = strokeLevel, color: Int = strokeColor) {
+        strokeLevel = level
+        strokeColor = color
+        prefs.edit().putInt("stroke_level", level).putInt("stroke_color", color).apply()
+        refreshDisplay()
+    }
+
+    fun refreshDisplay() {
+        val c = cutout
+        displayJob?.cancel()
+        if (c == null || strokeLevel <= 0) { display = null; return }
+        displayJob = viewModelScope.launch {
+            display = withContext(Dispatchers.Default) { PersonCut.withStroke(c, strokePx(c), strokeColor) }
+        }
+    }
 
     fun saveSettings(serper: String, removeBg: String, eng: String) {
         serperKey = serper.trim()
@@ -211,6 +250,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun setImage(bmp: Bitmap) {
         original = bmp
         cutout = null
+        display = null
         removeBackground()   // ڕاستەوخۆ باکگراوند لادەبات
     }
 
@@ -225,16 +265,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 throw e
             } catch (e: Exception) {
                 message = "remove.bg سەرنەکەوت — بە IS-Net کرا"
-                BackgroundRemover.removeIsNet(app, src, onStatus)
+                BackgroundRemover.removeIsNet(app, src, personOnly, onStatus)
             }
-            "fast" -> BackgroundRemover.removeOnDevice(src, onStatus)
+            "fast" -> BackgroundRemover.removeOnDevice(src, personOnly, onStatus)
             else -> try {
-                BackgroundRemover.removeIsNet(app, src, onStatus)
+                BackgroundRemover.removeIsNet(app, src, personOnly, onStatus)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 message = "IS-Net: ${e.message} — بە شێوازی خێرا کرا"
-                BackgroundRemover.removeOnDevice(src, onStatus)
+                BackgroundRemover.removeOnDevice(src, personOnly, onStatus)
             }
         }
     }
@@ -245,6 +285,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             busy = "لابردنی باکگراوند..."
             try {
                 cutout = cut(src) { busy = it }
+                refreshDisplay()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: OutOfMemoryError) {
@@ -257,7 +298,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun finalBitmap(): Bitmap? = cutout?.let { ImageUtils.withBackground(it, bgColor) }
+    fun finalBitmap(): Bitmap? = cutout?.let { compose(it) }
 
     fun save() {
         val bmp = finalBitmap() ?: return
@@ -374,6 +415,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             cutout = withContext(Dispatchers.IO) { decodeFile(f) }
             original = null
+            refreshDisplay()
         }
     }
 
@@ -387,7 +429,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 for (f in files) {
                     try {
                         val b = decodeFile(f)
-                        val out = ImageUtils.withBackground(b, bgColor)
+                        val out = compose(b)
                         ImageUtils.saveToGallery(getApplication(), out)
                         if (out != b) out.recycle()
                         b.recycle()
@@ -408,7 +450,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         batch.mapNotNull { it.file }.forEachIndexed { i, f ->
             try {
                 val b = decodeFile(f)
-                val o = ImageUtils.withBackground(b, bgColor)
+                val o = compose(b)
                 val sf = File(dir, "result_${i + 1}.png")
                 sf.outputStream().use { o.compress(Bitmap.CompressFormat.PNG, 100, it) }
                 out += FileProvider.getUriForFile(app, "${app.packageName}.files", sf)
