@@ -18,8 +18,11 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // واژووی debug بۆ ئەوەی ڕاستەوخۆ دابمەزرێت
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
