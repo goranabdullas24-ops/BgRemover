@@ -32,7 +32,9 @@ data class ImageResult(
     val thumbUrl: String,
     val title: String,
     /** پەڕەی سەرچاوە؛ بۆ ئەو ماڵپەڕانەی بەبێ Referer وێنە نادەن */
-    val pageUrl: String = ""
+    val pageUrl: String = "",
+    val width: Int = 0,
+    val height: Int = 0
 )
 
 /** HTTP client هاوبەش. User-Agent زیاد دەکات چونکە هەندێک ماڵپەڕ بەبێ ئەوە وێنە نادەن. */
@@ -53,6 +55,7 @@ object Net {
         .followRedirects(true)
         .addInterceptor { chain ->
             val req = chain.request()
+            if (req.header("User-Agent") != null) return@addInterceptor chain.proceed(req)
             val ua = if (isWikimedia(req.url.host)) WIKI_UA else UA
             chain.proceed(req.newBuilder().header("User-Agent", ua).build())
         }
@@ -103,7 +106,10 @@ object ImageSearch {
             val full = o.optString("imageUrl")
             if (full.isBlank()) continue
             val thumb = o.optString("thumbnailUrl").ifBlank { full }
-            out += ImageResult(full, thumb, o.optString("title"), o.optString("link"))
+            out += ImageResult(
+                full, thumb, o.optString("title"), o.optString("link"),
+                o.optInt("imageWidth"), o.optInt("imageHeight")
+            )
         }
         return out
     }
@@ -149,10 +155,13 @@ object ImageSearch {
         val keys = pages.keys()
         while (keys.hasNext()) {
             val p = pages.getJSONObject(keys.next())
-            val full = p.optJSONObject("original")?.optString("source").orEmpty()
+            val orig = p.optJSONObject("original")
+            val full = orig?.optString("source").orEmpty()
             if (full.isBlank() || full.endsWith(".svg", true)) continue
             val thumb = p.optJSONObject("thumbnail")?.optString("source").orEmpty().ifBlank { full }
-            items += p.optInt("index", 999) to ImageResult(full, thumb, p.optString("title"))
+            items += p.optInt("index", 999) to ImageResult(
+                full, thumb, p.optString("title"), "", orig?.optInt("width") ?: 0, orig?.optInt("height") ?: 0
+            )
         }
         return items.sortedBy { it.first }.map { it.second }
     }
@@ -168,7 +177,7 @@ object ImageSearch {
             .addQueryParameter("gsrlimit", "50")
             .addQueryParameter("gsroffset", ((page - 1) * 50).toString())
             .addQueryParameter("prop", "imageinfo")
-            .addQueryParameter("iiprop", "url|mime")
+            .addQueryParameter("iiprop", "url|mime|size")
             .addQueryParameter("iiurlwidth", "400")
             .build()
         val json = JSONObject(String(Net.bytes(Request.Builder().url(url).build())))
@@ -182,7 +191,9 @@ object ImageSearch {
             if (mime !in setOf("image/jpeg", "image/png", "image/webp")) continue
             val full = info.optString("url")
             val thumb = info.optString("thumburl").ifBlank { full }
-            items += p.optInt("index", 999) to ImageResult(full, thumb, p.optString("title"))
+            items += p.optInt("index", 999) to ImageResult(
+                full, thumb, p.optString("title"), "", info.optInt("width"), info.optInt("height")
+            )
         }
         return items.sortedBy { it.first }.map { it.second }
     }
@@ -203,7 +214,10 @@ object ImageSearch {
             val o = arr.getJSONObject(i)
             val full = o.optString("url")
             if (full.isBlank() || full.endsWith(".svg", true)) continue
-            out += ImageResult(full, o.optString("thumbnail").ifBlank { full }, o.optString("title"), o.optString("foreign_landing_url"))
+            out += ImageResult(
+                full, o.optString("thumbnail").ifBlank { full }, o.optString("title"),
+                o.optString("foreign_landing_url"), o.optInt("width"), o.optInt("height")
+            )
         }
         return out
     }
@@ -287,9 +301,17 @@ object ImageUtils {
     fun decodeUri(ctx: Context, uri: Uri): Bitmap =
         decode(ImageDecoder.createSource(ctx.contentResolver, uri))
 
-    suspend fun download(url: String, referer: String? = null): Bitmap = withContext(Dispatchers.IO) {
-        val b = Request.Builder().url(url).header("Accept", "image/*,*/*;q=0.8")
+    const val DESKTOP_UA =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
+
+    /** پرۆکسی گشتیی وێنە (wsrv.nl): وێنەکە بە قەبارەی ئەسڵی لە سێرڤەرەکەوە دەهێنێت. */
+    fun proxied(url: String): String =
+        "https://wsrv.nl/?url=" + java.net.URLEncoder.encode(url, "UTF-8") + "&q=100"
+
+    suspend fun download(url: String, referer: String? = null, ua: String? = null): Bitmap = withContext(Dispatchers.IO) {
+        val b = Request.Builder().url(url).header("Accept", "image/avif,image/webp,image/*,*/*;q=0.8")
         if (!referer.isNullOrBlank()) b.header("Referer", referer)
+        if (!ua.isNullOrBlank()) b.header("User-Agent", ua)
         decodeBytes(Net.bytes(b.build()))
     }
 
@@ -304,8 +326,11 @@ object ImageUtils {
     }
 
     /** داگرتنی فایلی ئەسڵی وەک خۆی (بێ گۆڕین و بێ بچووککردنەوە). */
-    suspend fun downloadRaw(url: String): Pair<ByteArray, String> = withContext(Dispatchers.IO) {
-        val req = Request.Builder().url(url).header("Accept", "image/*,*/*;q=0.8").build()
+    suspend fun downloadRaw(url: String, referer: String? = null, ua: String? = null): Pair<ByteArray, String> = withContext(Dispatchers.IO) {
+        val rb = Request.Builder().url(url).header("Accept", "image/*,*/*;q=0.8")
+        if (!referer.isNullOrBlank()) rb.header("Referer", referer)
+        if (!ua.isNullOrBlank()) rb.header("User-Agent", ua)
+        val req = rb.build()
         val bytes = Net.bytes(req)
         val mime = sniffMime(bytes) ?: throw IOException("ئەمە وێنە نییە")
         bytes to mime

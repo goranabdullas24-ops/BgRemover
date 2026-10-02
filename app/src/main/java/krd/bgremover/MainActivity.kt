@@ -198,7 +198,7 @@ fun App(vm: MainViewModel = viewModel()) {
             }
 
             vm.original?.let { bmp ->
-                SectionCard("وێنەی سەرەکی — ${bmp.width}×${bmp.height} پیکسڵ" + if (vm.upscaled) " (Upscale کراوە ✨)" else "") {
+                SectionCard("وێنەی سەرەکی — ${bmp.width}×${bmp.height} پیکسڵ" + if (vm.upscaled) "" else "") {
                     if (vm.lowQuality) {
                         Text(
                             "⚠ ئەم ماڵپەڕە ڕێگەی بە داگرتنی وێنە ئەسڵییەکە نەدا؛ تەنها وێنە بچووکەکەی بەردەستە. وێنەیەکی تر هەڵبژێرە بۆ کوالیتی باشتر.",
@@ -214,17 +214,6 @@ fun App(vm: MainViewModel = viewModel()) {
                         contentScale = ContentScale.Fit
                     )
                     Spacer(Modifier.height(8.dp))
-                    if (!vm.upscaled && maxOf(bmp.width, bmp.height) < 2048) {
-                        Button(
-                            onClick = vm::upscaleNow,
-                            enabled = vm.busy == null,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(6.dp))
-                            Text("Upscale بە AI (×٤) — گەورە و ڕوونکردنەوە")
-                        }
-                        Spacer(Modifier.height(6.dp))
-                    }
                     OutlinedButton(
                         onClick = vm::saveOriginal,
                         enabled = vm.busy == null,
@@ -237,7 +226,7 @@ fun App(vm: MainViewModel = viewModel()) {
             }
 
             vm.cutout?.let { cut ->
-                SectionCard("ئەنجام — بێ باکگراوند (${cut.width}×${cut.height})") {
+                SectionCard("ئەنجام — بێ باکگراوند (${cut.width}×${cut.height})" + if (vm.upscaled) " ✨ Upscale" else "") {
                     val img = remember(cut) { cut.asImageBitmap() }
                     val bg = vm.bgColor
                     Box(
@@ -267,6 +256,17 @@ fun App(vm: MainViewModel = viewModel()) {
                         colors.forEach { c -> ColorChip(c, selected = vm.bgColor == c) { vm.bgColor = c } }
                     }
                     Spacer(Modifier.height(12.dp))
+                    if (!vm.upscaled && maxOf(cut.width, cut.height) < 2048) {
+                        OutlinedButton(
+                            onClick = vm::upscaleNow,
+                            enabled = vm.busy == null,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(6.dp))
+                            Text("Upscale بە AI (×٤) — گەورە و ڕوونکردنەوە")
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = vm::save, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp)); Text("پاشەکەوت")
@@ -343,6 +343,18 @@ fun App(vm: MainViewModel = viewModel()) {
                                         contentScale = ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
                                     )
+                                    if (item.width > 0 && item.height > 0) {
+                                        Text(
+                                            "${item.width}×${item.height}",
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            modifier = Modifier
+                                                .align(Alignment.BottomStart)
+                                                .padding(3.dp)
+                                                .background(Color(0x99000000), RoundedCornerShape(4.dp))
+                                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                                        )
+                                    }
                                     if (vm.selectMode) {
                                         Icon(
                                             if (sel) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
@@ -561,14 +573,6 @@ private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                     Column {
                         Text("تەنها کەسی سەرەکی (فۆکس)", fontWeight = FontWeight.Medium)
                         Text("ئەگەر چەند کەس هەبن، تەنها ئەوەی فۆکسی لەسەرە دەمێنێتەوە", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(checked = vm.autoUpscale, onCheckedChange = { vm.changeAutoUpscale(it) })
-                    Spacer(Modifier.width(8.dp))
-                    Column {
-                        Text("Upscale ی خۆکار", fontWeight = FontWeight.Medium)
-                        Text("وێنەی بچووکتر لە ١٠٠٠ پیکسڵ بە AI گەورە و ڕوون دەکرێتەوە", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                     }
                 }
                 HorizontalDivider()

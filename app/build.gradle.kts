@@ -12,9 +12,11 @@ android {
         applicationId = "krd.bgremover"
         minSdk = 29
         targetSdk = 35
-        versionCode = 12
-        versionName = "4.0"
+        versionCode = 13
+        versionName = "4.1"
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+        // کلیلی Serper ی هاوبەش بۆ هەموو مۆبایلەکان (لە GitHub Secret ـەوە، نەک لە کۆدەکەدا)
+        buildConfigField("String", "DEFAULT_SERPER_KEY", "\"${System.getenv("SERPER_KEY") ?: ""}\"")
     }
 
     buildTypes {
@@ -31,7 +33,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
     // کۆمپرێسکردنی کتێبخانە native ەکان بۆ APK ی بچووکتر
     packaging { jniLibs { useLegacyPackaging = true } }
 }

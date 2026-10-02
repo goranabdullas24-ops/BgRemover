@@ -21,21 +21,22 @@ import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
- * Upscale بە AI: Real-ESRGAN (general x4v3، مۆدێلی بچووک ~٥ MB).
+ * Upscale بە AI: Real-ESRGAN (general-wdn x4v3، کەمترین نەرمکردنەوە بۆ سروشتیترین ئەنجام).
+ * ئەنجامی AI بە ٧٠٪ لەگەڵ ٣٠٪ گەورەکردنی ئاسایی تێکەڵ دەکرێت بۆ ئەوەی وەک تابلۆ دیار نەبێت
+ * (تاقیکراوەتەوە: ڕوونتر لە گەورەکردنی ئاسایی و سروشتیتر لە AI ی تەنها).
  * وێنە ٤ جار گەورە دەکات و وردەکارییەکان ڕوونتر دەکاتەوە. لەسەر مۆبایل، بێ ئینتەرنێت
  * (دوای یەک جار داگرتنی مۆدێل). وێنەکە پارچە پارچە (tile) کار دەکرێت بۆ ئەوەی بیرگە پڕ نەبێت.
  */
 object Upscaler {
     private const val MODEL_URL =
-        "https://github.com/goranabdullas24-ops/BgRemover/raw/main/model/esrgan_x4.onnx"
-    private const val MODEL_FILE = "esrgan_x4.onnx"
+        "https://github.com/goranabdullas24-ops/BgRemover/raw/main/model/esrgan_x4_natural.onnx"
+    private const val MODEL_FILE = "esrgan_x4_natural.onnx"
     private const val MIN_BYTES = 4_000_000L
     private const val SCALE = 4
     private const val TILE = 160
     private const val PAD = 12
 
-    /** وێنەی لەمە بچووکتر (درێژترین لا) بە شێوەی خۆکار upscale دەکرێت. */
-    const val AUTO_BELOW = 1000
+    private const val AI_WEIGHT = 0.7f
 
     private val env: OrtEnvironment by lazy { OrtEnvironment.getEnvironment() }
     private var session: OrtSession? = null
@@ -155,6 +156,29 @@ object Upscaler {
                 out.setPixels(row, 0, cw, tx * SCALE, ty * SCALE, cw, ch)
                 done++
             }
+        }
+        // تێکەڵکردن: ٧٠٪ AI + ٣٠٪ گەورەکردنی ئاسایی (سروشتیتر)
+        withContext(Dispatchers.Default) {
+            onStatus("Upscale ×4 بە AI: سروشتیکردن...")
+            val base = Bitmap.createScaledBitmap(input, ow, oh, true)
+            val band = 64
+            val a = IntArray(ow * band); val b = IntArray(ow * band)
+            var y = 0
+            while (y < oh) {
+                val rows = min(band, oh - y)
+                out.getPixels(a, 0, ow, 0, y, ow, rows)
+                base.getPixels(b, 0, ow, 0, y, ow, rows)
+                for (i in 0 until ow * rows) {
+                    val p = a[i]; val q = b[i]
+                    val r = (((p shr 16) and 255) * AI_WEIGHT + ((q shr 16) and 255) * (1 - AI_WEIGHT)).roundToInt()
+                    val g = (((p shr 8) and 255) * AI_WEIGHT + ((q shr 8) and 255) * (1 - AI_WEIGHT)).roundToInt()
+                    val bl = ((p and 255) * AI_WEIGHT + (q and 255) * (1 - AI_WEIGHT)).roundToInt()
+                    a[i] = (0xFF shl 24) or (r shl 16) or (g shl 8) or bl
+                }
+                out.setPixels(a, 0, ow, 0, y, ow, rows)
+                y += rows
+            }
+            base.recycle()
         }
         if (input !== src) input.recycle()
 
