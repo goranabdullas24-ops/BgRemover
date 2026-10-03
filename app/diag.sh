@@ -29,7 +29,7 @@ dump ui2
 adb shell input swipe 160 500 160 250 400; sleep 2; dump ui2; adb exec-out screencap -p > diag/2b.png
 U=$(center ui2 text "2×"); echo "2x at $U"
 adb shell input tap $U
-for i in 1 2 3 4 5 6; do sleep 10; adb exec-out screencap -p > diag/3_up_$i.png; done
+for i in $(seq 1 11); do sleep 50; adb exec-out screencap -p > diag/3_up_$i.png; done
 dump ui3
 adb logcat -d > diag/logcat.txt
 grep -E "krd.bgremover|AndroidRuntime|FATAL|System.err" diag/logcat.txt | tail -200 > diag/logcat_short.txt
