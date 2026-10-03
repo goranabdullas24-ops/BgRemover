@@ -18,6 +18,7 @@ jobs:
         run: python tests/diag_download.py > diag.txt 2>&1 & type diag.txt
       - name: annotate
         if: always()
+        env: { PYTHONIOENCODING: utf-8 }
         shell: python
         run: |
           ls = [l.rstrip() for l in open("diag.txt", encoding="utf-8", errors="replace") if l.strip() and "propagateSizeHints" not in l]
