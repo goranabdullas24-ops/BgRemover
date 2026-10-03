@@ -38,7 +38,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "1.0"
+VERSION = "1.1"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 
@@ -290,6 +290,7 @@ MODELS = {
     "isnet": ("isnet_w8.onnx", 40_000_000),
     "modnet": ("modnet.onnx", 25_000_000),
     "esrgan": ("esrgan_x4_natural.onnx", 4_000_000),
+    "yolo": ("yolo11n_seg.onnx", 10_000_000),
 }
 _sessions: dict = {}
 _locks = {k: threading.Lock() for k in MODELS}
@@ -309,7 +310,7 @@ def ensure_model(key: str, progress: ProgressFn = _noop) -> Path:
     p = models_dir() / fname
     if p.exists() and p.stat().st_size > min_size:
         return p
-    label = {"isnet": "IS-Net", "modnet": "MODNet (مرۆڤ)", "esrgan": "Upscale"}[key]
+    label = {"isnet": "IS-Net", "modnet": "MODNet (مرۆڤ)", "esrgan": "Upscale", "yolo": "جیاکردنەوەی کەسەکان"}[key]
     download_file(MODEL_BASE + fname, p, lambda pc: progress(f"داگرتنی مۆدێلی {label} (تەنها یەک جار): {pc}%"))
     if p.stat().st_size < min_size:
         p.unlink(missing_ok=True)
@@ -373,6 +374,102 @@ def modnet_mask(im: Image.Image, progress: ProgressFn = _noop, ref: int = 512) -
         x = np.asarray(im.resize((rw, rh), Image.BILINEAR), dtype=np.float32) / 127.5 - 1.0
         m = s.run(None, {s.get_inputs()[0].name: x.transpose(2, 0, 1)[None]})[0][0, 0]
         return _resize_mask(m, (w, h))
+
+
+def person_instances(im: Image.Image, progress: ProgressFn = _noop, conf: float = 0.25) -> list[tuple[np.ndarray, float, tuple]]:
+    """
+    YOLO11-seg: هەر کەسێک بە جیا (تەنانەت ئەگەر بە یەکەوە لکابن).
+    دەگەڕێتەوە: [(ماسک 0..1 بە قەبارەی وێنە، متمانە، box)]
+    """
+    with _locks["yolo"]:
+        s = _session_for("yolo", progress)
+        progress("جیاکردنەوەی کەسەکان لە یەکتر...")
+        w, h = im.size
+        S = 640
+        sc = S / max(w, h)
+        nw, nh = round(w * sc), round(h * sc)
+        canvas = Image.new("RGB", (S, S), (114, 114, 114))
+        px, py = (S - nw) // 2, (S - nh) // 2
+        canvas.paste(im.resize((nw, nh), Image.BILINEAR), (px, py))
+        x = (np.asarray(canvas, np.float32) / 255.0).transpose(2, 0, 1)[None]
+        out0, protos = s.run(None, {s.get_inputs()[0].name: x})
+        pred = out0[0].T                       # 8400 × 116
+        scores = pred[:, 4]                    # کلاسی 0 = مرۆڤ
+        keep = scores > conf
+        if not keep.any():
+            return []
+        pred, scores = pred[keep], scores[keep]
+        boxes = pred[:, :4].copy()             # cx, cy, w, h
+        xyxy = np.stack([boxes[:, 0] - boxes[:, 2] / 2, boxes[:, 1] - boxes[:, 3] / 2,
+                         boxes[:, 0] + boxes[:, 2] / 2, boxes[:, 1] + boxes[:, 3] / 2], 1)
+        order = np.argsort(-scores)
+        chosen = []
+        while order.size:
+            i = order[0]
+            chosen.append(i)
+            xx1 = np.maximum(xyxy[i, 0], xyxy[order[1:], 0]); yy1 = np.maximum(xyxy[i, 1], xyxy[order[1:], 1])
+            xx2 = np.minimum(xyxy[i, 2], xyxy[order[1:], 2]); yy2 = np.minimum(xyxy[i, 3], xyxy[order[1:], 3])
+            inter = np.clip(xx2 - xx1, 0, None) * np.clip(yy2 - yy1, 0, None)
+            area = lambda b: (b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])
+            iou = inter / (area(xyxy[[i]]) + area(xyxy[order[1:]]) - inter + 1e-6)
+            order = order[1:][iou < 0.5]
+        P = protos[0].reshape(32, -1)          # 32 × 25600
+        res = []
+        for i in chosen[:12]:
+            m = 1 / (1 + np.exp(-(pred[i, 84:] @ P)))
+            m = m.reshape(160, 160)
+            # بڕینی ماسک بە box
+            b = xyxy[i] / 4.0
+            # box کەمێک فراوان دەکرێت بۆ ئەوەی ماسکی کەسە پشتەوەکان لە شوێنی پێکەوەلکان نەبڕدرێت
+            bw, bh = b[2] - b[0], b[3] - b[1]
+            b = b + np.array([-0.15 * bw, -0.08 * bh, 0.15 * bw, 0.08 * bh])
+            yy, xx = np.mgrid[:160, :160]
+            m = m * ((xx >= b[0]) & (xx <= b[2]) & (yy >= b[1]) & (yy <= b[3]))
+            # لابردنی padding و گەڕاندنەوە بۆ قەبارەی وێنە
+            mi = Image.fromarray((m * 255).astype(np.uint8)).resize((S, S), Image.BILINEAR)
+            mi = mi.crop((px, py, px + nw, py + nh)).resize((w, h), Image.BILINEAR)
+            box = tuple(((xyxy[i] - [px, py, px, py]) / sc).tolist())
+            res.append((np.asarray(mi, np.float32) / 255.0, float(scores[i]), box))
+        return res
+
+
+def main_person_gate(instances, rgb: np.ndarray) -> Optional[np.ndarray]:
+    """
+    کەسی سەرەکی هەڵدەبژێرێت (گەورەتر، ڕوونتر/فۆکس، نزیکتر لە ناوەڕاست، متمانەی زیاتر)
+    و دەروازەیەک دەگەڕێنێتەوە کە کەسانی تر (تەنانەت ئەوانەی پێوەی لکاون) لادەبات.
+    """
+    if len(instances) < 2:
+        return None
+    h, w = rgb.shape[:2]
+    gray = rgb.astype(np.float32).mean(2)
+    lap = np.abs(nd.laplace(gray))
+    best, best_s = None, -1.0
+    for k, (m, c, _) in enumerate(instances):
+        mm = m > 0.5
+        if c < 0.35 or mm.sum() < 50:      # کەسی کەم-متمانە تەنها وەک «کەسی تر» بەکاردێت
+            continue
+        sharp = float(lap[nd.binary_erosion(mm, iterations=2)].mean()) if mm.sum() > 200 else 0.0
+        ys, xs = np.nonzero(mm)
+        dc = np.hypot(xs.mean() / w - 0.5, ys.mean() / h - 0.5)
+        sc = np.sqrt(mm.sum()) * (sharp + 1.0) * (1.2 - dc) * c
+        if sc > best_s:
+            best, best_s = k, sc
+    if best is None:
+        return None
+    main = instances[best][0]
+    others = np.zeros_like(main)
+    for k, (m, _, _) in enumerate(instances):
+        if k != best:
+            others = np.maximum(others, m)
+    if (others > 0.5).sum() < 50:
+        return None
+    r = max(2, int(min(w, h) * 0.012))
+    core = main > 0.85
+    near = _box(nd.binary_dilation(core, iterations=r).astype(np.float32), r)   # بۆ قژ و لێوار
+    gate = np.clip(near * 1.6, 0, 1)
+    # ئەو شوێنانەی کەسێکی تر زیاتر هی خۆیەتی، بە تەواوی لادەبرێن
+    gate = np.where((others > 0.25) & (others * 1.6 > main), 0.0, gate)
+    return nd.gaussian_filter(gate.astype(np.float32), 1.0)
 
 
 # ───────────────────────── پاککردنەوەی ماسک ─────────────────────────
@@ -482,9 +579,21 @@ def compute_alpha(im: Image.Image, opts: CutOptions, progress: ProgressFn = _noo
                 used_person = True
         except Exception:  # noqa: BLE001
             pass
-    progress("پاککردنەوەی دەوروبەر و لێوارەکان...")
     if opts.focus_only:
-        a = focus_select(a, rgb)
+        gated = False
+        try:
+            inst = person_instances(work, progress)
+            g = main_person_gate(inst, rgb)
+            if g is not None:
+                a = a * g
+                gated = True
+        except Exception:  # noqa: BLE001
+            pass
+        progress("پاککردنەوەی دەوروبەر و لێوارەکان...")
+        if not gated:
+            a = focus_select(a, rgb)
+    else:
+        progress("پاککردنەوەی دەوروبەر و لێوارەکان...")
     a = keep_main(a)
     a = solidify(a)
     return refine(rgb, a)
