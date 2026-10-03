@@ -26,7 +26,7 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller==6.11.1
+          pip install -r requirements.txt pyinstaller==6.11.1 "pyinstaller-hooks-contrib>=2025.1"
 
       - name: Test search and full-size download (live network)
         shell: python
@@ -46,7 +46,7 @@ jobs:
           python make_icon.py
           pyinstaller --noconfirm --onefile --windowed --name BgRemover --icon icon.ico `
             --collect-data onnxruntime --collect-binaries onnxruntime `
-            --hidden-import pillow_heif --hidden-import pillow_avif `
+            --hidden-import pillow_heif --hidden-import pillow_avif --hidden-import scipy._cyutility --collect-submodules scipy.ndimage --collect-submodules scipy._lib `
             --exclude-module tkinter --exclude-module matplotlib `
             main.py
           dir dist
@@ -56,7 +56,7 @@ jobs:
         run: |
           pyinstaller --noconfirm --onefile --console --name BgRemoverDebug `
             --collect-data onnxruntime --collect-binaries onnxruntime `
-            --hidden-import pillow_heif --hidden-import pillow_avif `
+            --hidden-import pillow_heif --hidden-import pillow_avif --hidden-import scipy._cyutility --collect-submodules scipy.ndimage --collect-submodules scipy._lib `
             --exclude-module tkinter --exclude-module matplotlib `
             main.py | Out-Null
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielgatis/rembg/main/examples/girl-2.jpg" -OutFile test.jpg
