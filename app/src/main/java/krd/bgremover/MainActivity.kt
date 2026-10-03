@@ -419,6 +419,9 @@ fun App(vm: MainViewModel = viewModel()) {
                                                 label = "داگرتن",
                                                 loading = item.fullUrl in vm.downloading
                                             ) { vm.downloadOne(item) }
+                                        }
+                                        // Upscale ×2 لە گۆشەی خوارەوە
+                                        Box(Modifier.align(Alignment.BottomEnd).padding(4.dp)) {
                                             TileIcon(
                                                 icon = Icons.Default.AutoAwesome,
                                                 label = "Upscale ×2",

@@ -26,6 +26,7 @@ adb shell input tap $S
 sleep 25
 adb exec-out screencap -p > diag/2_results.png
 dump ui2
+adb shell input swipe 160 500 160 250 400; sleep 2; dump ui2; adb exec-out screencap -p > diag/2b.png
 U=$(center ui2 text "2×"); echo "2x at $U"
 adb shell input tap $U
 for i in 1 2 3 4 5 6; do sleep 10; adb exec-out screencap -p > diag/3_up_$i.png; done
