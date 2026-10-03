@@ -1325,7 +1325,26 @@ def make_icon() -> QIcon:
     return QIcon(pm)
 
 
+def _selftest(inp: str, outp: str) -> None:
+    """پشکنینی ئۆتۆماتیکی بێ ڕووکار. ئەنجام لە selftest.log دەنووسرێت."""
+    log = open(Path(outp).with_name("selftest.log"), "w", encoding="utf-8")
+    try:
+        src = core.open_image(inp)
+        out, _ = core.remove_background(src, core.CutOptions(), lambda m: print(m, file=log, flush=True))
+        out.save(outp)
+        up = core.upscale(src.resize((160, 120)), 4096, lambda m: None)
+        print("SELFTEST OK", out.size, up.size, file=log, flush=True)
+    except Exception:  # noqa: BLE001
+        traceback.print_exc(file=log)
+    finally:
+        log.close()
+
+
 def main():
+    if "--selftest" in sys.argv:
+        i = sys.argv.index("--selftest")
+        _selftest(sys.argv[i + 1], sys.argv[i + 2])
+        return
     if sys.platform == "win32":
         try:
             import ctypes
@@ -1343,15 +1362,6 @@ def main():
     app.setWindowIcon(make_icon())
     w = MainWindow()
     w.show()
-    if "--selftest" in sys.argv:
-        # پشکنینی ئۆتۆماتیکی (بێ ڕووکار): --selftest input.jpg output.png
-        i = sys.argv.index("--selftest")
-        src = core.open_image(sys.argv[i + 1])
-        out, _ = core.remove_background(src, core.CutOptions(), print)
-        out.save(sys.argv[i + 2])
-        up = core.upscale(core.open_image(sys.argv[i + 1]).resize((160, 120)), 4096, print)
-        print("SELFTEST OK", out.size, up.size)
-        sys.exit(0)
     if "--smoke-test" in sys.argv:
         QTimer.singleShot(1500, app.quit)
     sys.exit(app.exec())

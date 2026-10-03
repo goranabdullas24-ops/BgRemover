@@ -52,14 +52,17 @@ jobs:
           dir dist
 
       - name: Self-test the EXE (models download + cutout + upscale)
+        timeout-minutes: 10
         run: |
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielgatis/rembg/main/examples/girl-2.jpg" -OutFile test.jpg
-          $p = Start-Process -FilePath dist\BgRemover.exe -ArgumentList "--selftest","test.jpg","out.png" -Wait -PassThru -NoNewWindow -RedirectStandardOutput selftest.log
-          Get-Content selftest.log -Tail 5
+          $out = Join-Path (Get-Location) "out.png"
+          $p = Start-Process -FilePath dist\BgRemover.exe -ArgumentList "--selftest","test.jpg",$out -Wait -PassThru
+          Get-Content selftest.log
           if (-not (Select-String -Path selftest.log -Pattern "SELFTEST OK")) { exit 1 }
           if (-not (Test-Path out.png)) { exit 1 }
 
       - name: Smoke-test GUI start
+        timeout-minutes: 5
         run: |
           $p = Start-Process -FilePath dist\BgRemover.exe -ArgumentList "--smoke-test" -Wait -PassThru
           "exit code: $($p.ExitCode)"
