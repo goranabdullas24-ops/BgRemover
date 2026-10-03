@@ -14,7 +14,8 @@ jobs:
       - run: pip install -r requirements.txt
       - name: diag
         env: { SERPER_KEY: "${{ secrets.SERPER_KEY }}", PYTHONIOENCODING: utf-8 }
-        run: python tests/diag_download.py 2>&1 | Tee-Object diag.txt
+        shell: cmd
+        run: python tests/diag_download.py > diag.txt 2>&1 & type diag.txt
       - name: annotate
         if: always()
         shell: python
