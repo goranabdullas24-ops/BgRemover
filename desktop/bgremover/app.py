@@ -29,7 +29,7 @@ from . import core
 
 PURPLE = "#5A5A96"
 STYLE = f"""
-QWidget {{ font-size: 10.5pt; }}
+QWidget {{ font-size: 10.5pt; color: #1C1B1F; }}
 QMainWindow, QScrollArea, QScrollArea > QWidget > QWidget {{ background: #FBF9FF; }}
 QFrame#card {{ background: #F1EFF7; border-radius: 14px; }}
 QLabel#cardTitle {{ font-weight: 600; font-size: 11pt; }}
@@ -39,7 +39,12 @@ QPushButton:disabled {{ color: #AAA; border-color: #DDD; }}
 QPushButton#primary {{ background: {PURPLE}; color: white; border: none; }}
 QPushButton#primary:hover {{ background: #4B4B85; }}
 QPushButton#primary:disabled {{ background: #B9B8D3; }}
-QLineEdit {{ border: 1.5px solid #8C8AAE; border-radius: 14px; padding: 8px 12px; background: white; font-size: 11.5pt; }}
+QLineEdit {{ border: 1.5px solid #8C8AAE; border-radius: 14px; padding: 8px 12px; background: white; color: #1C1B1F; font-size: 11.5pt; selection-background-color: {PURPLE}; selection-color: white; }}
+QLabel {{ color: #1C1B1F; background: transparent; }}
+QCheckBox, QRadioButton, QGroupBox {{ color: #1C1B1F; }}
+QMenu {{ background: white; color: #1C1B1F; }}
+QMenu::item:selected {{ background: #ECEBF7; }}
+QDialog {{ background: #FBF9FF; }}
 QLineEdit:focus {{ border-color: {PURPLE}; }}
 QToolButton#tileBtn {{ background: rgba(0,0,0,170); color: white; border-radius: 15px; font-size: 12pt; }}
 QToolButton#tileBtn:hover {{ background: {PURPLE}; }}
@@ -1358,6 +1363,18 @@ def main():
         f = app.font()
         f.setFamily("Segoe UI")
         app.setFont(f)
+    # ڕووکاری ڕووناک بەبێ گوێدانە Dark Mode ی ویندۆز (نووسینی ڕەش لەسەر باکگراوندی سپی)
+    app.setStyle("Fusion")
+    from PySide6.QtGui import QPalette
+    pal = QPalette()
+    for role, col in [(QPalette.Window, "#FBF9FF"), (QPalette.WindowText, "#1C1B1F"),
+                      (QPalette.Base, "#FFFFFF"), (QPalette.AlternateBase, "#F1EFF7"),
+                      (QPalette.Text, "#1C1B1F"), (QPalette.Button, "#FFFFFF"),
+                      (QPalette.ButtonText, PURPLE), (QPalette.ToolTipBase, "#FFFFFF"),
+                      (QPalette.ToolTipText, "#1C1B1F"), (QPalette.PlaceholderText, "#8A8899"),
+                      (QPalette.Highlight, PURPLE), (QPalette.HighlightedText, "#FFFFFF")]:
+        pal.setColor(role, QColor(col))
+    app.setPalette(pal)
     app.setStyleSheet(STYLE)
     app.setWindowIcon(make_icon())
     w = MainWindow()
