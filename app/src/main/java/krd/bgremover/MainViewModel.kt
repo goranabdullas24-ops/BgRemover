@@ -381,27 +381,120 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             message = "Upscale سەرنەکەوت: ${e.message}"; null
         }
 
-    /** دوگمەی Upscale (دوای لابردنی باکگراوند): ئەنجامەکە ×٤ گەورە و ڕوون دەکاتەوە، ڕوونییەکەی دەپارێزرێت. */
-    fun upscaleNow() {
-        val src = cutout ?: return
-        val orig = original
+    // ───── بەشی Upscale ی جیا ─────
+    var upSrc by mutableStateOf<Bitmap?>(null)
+        private set
+    private var upColor: Bitmap? = null
+    var upRes by mutableStateOf<Bitmap?>(null)
+        private set
+    var upInfo by mutableStateOf("")
+        private set
+    private var upName = "image"
+    private var upScale = 2
+
+    private fun setUpSource(bmp: Bitmap, color: Bitmap?, name: String) {
+        upSrc = bmp; upColor = color; upRes = null; upName = name
+        upInfo = "وێنە: ${bmp.width}×${bmp.height} پیکسڵ — دوگمەی 2× یان 4× دابگرە"
+    }
+
+    /** دوگمەی Upscale لەسەر ئەنجام یان وێنەی سەرەکی */
+    fun upscaleFrom(what: String, scale: Int = 2) {
+        if (busy != null) return
+        when (what) {
+            "cutout" -> {
+                val c = cutout ?: return
+                val o = original?.takeIf { it.width == c.width && it.height == c.height }
+                val bg = bgColor
+                if (bg != null) setUpSource(ImageUtils.withBackground(c, bg), null, "bg")
+                else setUpSource(c, o, "nobg")
+            }
+            "original" -> setUpSource(original ?: return, null, "original")
+            else -> return
+        }
+        runUpscale(scale)
+    }
+
+    /** دوگمەی 2× لەسەر وێنەیەکی گەڕان: بە قەبارەی تەواو دادەبەزێت و ×2 دەکرێت */
+    fun upscaleTile(r: ImageResult) {
+        if (busy != null) return
         job?.cancel()
         job = viewModelScope.launch {
-            // ڕەنگەکان لە وێنە ئەسڵییەکەوە (بۆ ئەوەی لێوار تاریک نەبێت)، ڕوونی لە ئەنجامەکەوە
-            val rgb = if (orig != null && orig.width == src.width && orig.height == src.height) orig
-                      else ImageUtils.withBackground(src, android.graphics.Color.WHITE)
-            val upRgb = upscaleSafe(rgb, 4096) { busy = it }
-            val up = upRgb?.let { u ->
-                busy = "Upscale: جێبەجێکردنی ڕوونی..."
-                withContext(Dispatchers.Default) { ImageUtils.applyAlpha(u, src).also { u.recycle() } }
+            busy = "داگرتنی وێنەکە بۆ Upscale..."
+            val ref = Uri.parse(r.fullUrl).let { "${it.scheme}://${it.host}/" }
+            val tries = listOf<suspend () -> Bitmap>(
+                { ImageUtils.download(r.fullUrl) },
+                { ImageUtils.download(r.fullUrl, ref, ImageUtils.DESKTOP_UA) },
+                { ImageUtils.download(ImageUtils.proxied(r.fullUrl)) },
+                { ImageUtils.download(r.thumbUrl) },
+            )
+            var bmp: Bitmap? = null
+            for (t in tries) {
+                try { bmp = t(); break } catch (e: CancellationException) { throw e } catch (_: Exception) {}
+            }
+            busy = null
+            if (bmp == null) { message = "ئەم وێنەیە دانابەزێت"; return@launch }
+            setUpSource(bmp, null, "web")
+            runUpscale(2)
+        }
+    }
+
+    /** وێنەیەک لە گاڵەری بۆ Upscale */
+    fun upscaleUri(uri: Uri) {
+        viewModelScope.launch {
+            try {
+                val bmp = withContext(Dispatchers.IO) { ImageUtils.decodeUri(getApplication(), uri) }
+                setUpSource(bmp, null, "gallery")
+            } catch (e: Exception) {
+                message = "نەتوانرا وێنەکە بکرێتەوە"
+            }
+        }
+    }
+
+    fun runUpscale(scale: Int) {
+        val src = upSrc ?: return
+        if (busy != null) return
+        val color = upColor
+        job?.cancel()
+        job = viewModelScope.launch {
+            busy = "Upscale ×$scale..."
+            val up = try {
+                Upscaler.upscaleImage(getApplication(), src, scale, color) { busy = it }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: OutOfMemoryError) {
+                message = "Upscale: بیرگەی مۆبایل بەس نییە، ×2 تاقی بکەرەوە"; null
+            } catch (e: Exception) {
+                message = "Upscale سەرنەکەوت: ${e.message}"; null
             }
             busy = null
             if (up != null) {
-                cutout = up
-                upscaled = true
-                message = "Upscale کرا: ${src.width}×${src.height} → ${up.width}×${up.height}"
+                upRes = up
+                upScale = scale
+                upInfo = "✔ Upscale ×$scale: ${src.width}×${src.height} → ${up.width}×${up.height} پیکسڵ"
+                message = "Upscale کرا: ${up.width}×${up.height}"
             }
         }
+    }
+
+    fun saveUpscaled() {
+        val bmp = upRes ?: return
+        viewModelScope.launch {
+            message = try {
+                withContext(Dispatchers.IO) { ImageUtils.saveToGallery(getApplication(), bmp) }
+                "پاشەکەوت کرا لە گاڵەری › Pictures/BgRemover"
+            } catch (e: Exception) {
+                "پاشەکەوت نەکرا: ${e.message}"
+            }
+        }
+    }
+
+    suspend fun shareUpscaledUri(): Uri? {
+        val bmp = upRes ?: return null
+        return withContext(Dispatchers.IO) { ImageUtils.shareUri(getApplication(), bmp) }
+    }
+
+    fun closeUpscale() {
+        upSrc = null; upColor = null; upRes = null; upInfo = ""
     }
 
     private fun setImage(bmp: Bitmap) {

@@ -203,4 +203,114 @@ object Upscaler {
         if (result !== out) out.recycle()
         result
     }
+
+    /** سنوورەکان بۆ ئەوەی بیرگەی مۆبایل پڕ نەبێت */
+    private const val MAX_IN_PIXELS = 4_200_000L
+    private const val MAX_OUT_PIXELS = 26_000_000L
+    private const val MAX_OUT_SIDE = 8192
+
+    /**
+     * Upscale ×2 یان ×4 بۆ هەر وێنەیەک. مۆدێلەکە ×4 کار دەکات؛ بۆ ×2 هەر پارچەیەک ڕاستەوخۆ بچووک
+     * دەکرێتەوە (وردەکاری زیاتر لە ×2 ی ئاسایی). ڕوونی (alpha) ی src دەپارێزرێت.
+     * colorSrc: ئەگەر هەبێت (هەمان قەبارە)، ڕەنگەکان لەوەوە دەهێنرێن (بۆ وێنەی بێ باکگراوند، لێوار تاریک نابێت).
+     */
+    suspend fun upscaleImage(
+        ctx: Context, src0: Bitmap, scale: Int, colorSrc0: Bitmap?, onStatus: (String) -> Unit
+    ): Bitmap = lock.withLock {
+        val file = ensureModel(ctx) { onStatus("داگرتنی مۆدێلی Upscale (تەنها یەک جار): $it%") }
+        var src = src0
+        var colorSrc = colorSrc0?.takeIf { it.width == src0.width && it.height == src0.height }
+        val px0 = src.width.toLong() * src.height
+        if (px0 > MAX_IN_PIXELS) {
+            val s = sqrt(MAX_IN_PIXELS.toFloat() / px0)
+            val nw = (src.width * s).roundToInt().coerceAtLeast(1); val nh = (src.height * s).roundToInt().coerceAtLeast(1)
+            src = Bitmap.createScaledBitmap(src, nw, nh, true)
+            colorSrc = colorSrc?.let { Bitmap.createScaledBitmap(it, nw, nh, true) }
+        }
+        val w = src.width; val h = src.height
+        var f = scale.toFloat()
+        f = min(f, MAX_OUT_SIDE.toFloat() / max(w, h))
+        f = min(f, sqrt(MAX_OUT_PIXELS.toFloat() / (w.toLong() * h)))
+        f = max(f, 1f)
+        val W = (w * f).roundToInt().coerceAtLeast(1); val H = (h * f).roundToInt().coerceAtLeast(1)
+        val sess = session(file)
+        val out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
+        val rgbSrc = colorSrc ?: src
+        val total = ((w + TILE - 1) / TILE) * ((h + TILE - 1) / TILE)
+        var done = 0
+        withContext(Dispatchers.Default) {
+            for (ty in 0 until h step TILE) for (tx in 0 until w step TILE) {
+                coroutineContext.ensureActive()
+                onStatus("Upscale ×$scale بە AI: ${done * 100 / total}%")
+                val x0 = max(0, tx - PAD); val y0 = max(0, ty - PAD)
+                val x1 = min(w, tx + TILE + PAD); val y1 = min(h, ty + TILE + PAD)
+                val tw = x1 - x0; val th = y1 - y0; val n = tw * th
+                val pix = IntArray(n)
+                rgbSrc.getPixels(pix, 0, tw, x0, y0, tw, th)
+                val fb = FloatBuffer.allocate(3 * n)
+                for (i in 0 until n) {
+                    val c = pix[i]
+                    fb.put(i, ((c shr 16) and 255) / 255f)
+                    fb.put(n + i, ((c shr 8) and 255) / 255f)
+                    fb.put(2 * n + i, (c and 255) / 255f)
+                }
+                fb.rewind()
+                val otw = tw * SCALE; val oth = th * SCALE; val on = otw * oth
+                val res = FloatArray(3 * on)
+                OnnxTensor.createTensor(env, fb, longArrayOf(1, 3, th.toLong(), tw.toLong())).use { t ->
+                    sess.run(mapOf(sess.inputNames.first() to t)).use { r ->
+                        (r.get(0) as OnnxTensor).floatBuffer.get(res)
+                    }
+                }
+                val tx1 = min(tx + TILE, w); val ty1 = min(ty + TILE, h)
+                val cx0 = (tx - x0) * SCALE; val cy0 = (ty - y0) * SCALE
+                val cw = (tx1 - tx) * SCALE; val ch = (ty1 - ty) * SCALE
+                val ai = IntArray(cw * ch)
+                for (yy in 0 until ch) for (xx in 0 until cw) {
+                    val i = (cy0 + yy) * otw + (cx0 + xx)
+                    val r = (res[i] * 255f + 0.5f).toInt().coerceIn(0, 255)
+                    val g = (res[on + i] * 255f + 0.5f).toInt().coerceIn(0, 255)
+                    val b = (res[2 * on + i] * 255f + 0.5f).toInt().coerceIn(0, 255)
+                    ai[yy * cw + xx] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+                }
+                val X0 = (tx * f).roundToInt(); val Y0 = (ty * f).roundToInt()
+                val X1 = (tx1 * f).roundToInt(); val Y1 = (ty1 * f).roundToInt()
+                val dw = X1 - X0; val dh = Y1 - Y0
+                if (dw <= 0 || dh <= 0) { done++; continue }
+                var aiBmp = Bitmap.createBitmap(ai, cw, ch, Bitmap.Config.ARGB_8888)
+                if (cw != dw || ch != dh) {
+                    val sc = Bitmap.createScaledBitmap(aiBmp, dw, dh, true)
+                    if (sc !== aiBmp) { aiBmp.recycle(); aiBmp = sc }
+                }
+                // گەورەکردنی ئاسایی بۆ تێکەڵکردن + ڕوونی
+                val crop = Bitmap.createBitmap(rgbSrc, tx, ty, tx1 - tx, ty1 - ty)
+                val base = Bitmap.createScaledBitmap(crop, dw, dh, true)
+                val alphaCrop = if (rgbSrc !== src) Bitmap.createBitmap(src, tx, ty, tx1 - tx, ty1 - ty) else crop
+                val alphaBase = if (alphaCrop !== crop) Bitmap.createScaledBitmap(alphaCrop, dw, dh, true) else base
+                val a = IntArray(dw * dh); val b = IntArray(dw * dh); val al = if (alphaBase !== base) IntArray(dw * dh) else b
+                aiBmp.getPixels(a, 0, dw, 0, 0, dw, dh)
+                base.getPixels(b, 0, dw, 0, 0, dw, dh)
+                if (al !== b) alphaBase.getPixels(al, 0, dw, 0, 0, dw, dh)
+                for (i in 0 until dw * dh) {
+                    val p = a[i]; val q = b[i]
+                    val r = (((p shr 16) and 255) * AI_WEIGHT + ((q shr 16) and 255) * (1 - AI_WEIGHT)).roundToInt()
+                    val g = (((p shr 8) and 255) * AI_WEIGHT + ((q shr 8) and 255) * (1 - AI_WEIGHT)).roundToInt()
+                    val bl = ((p and 255) * AI_WEIGHT + (q and 255) * (1 - AI_WEIGHT)).roundToInt()
+                    val alpha = (al[i] ushr 24) and 255
+                    a[i] = (alpha shl 24) or (r shl 16) or (g shl 8) or bl
+                }
+                out.setPixels(a, 0, dw, X0, Y0, dw, dh)
+                // createBitmap(src, ...) دەتوانێت هەمان src بگەڕێنێتەوە → ئەوە recycle ناکرێت
+                aiBmp.recycle()
+                if (base !== crop && base !== rgbSrc) base.recycle()
+                if (crop !== rgbSrc) crop.recycle()
+                if (alphaBase !== base && alphaBase !== alphaCrop && alphaBase !== src) alphaBase.recycle()
+                if (alphaCrop !== crop && alphaCrop !== src) alphaCrop.recycle()
+                done++
+            }
+        }
+        if (src !== src0) src.recycle()
+        if (colorSrc != null && colorSrc !== colorSrc0) colorSrc.recycle()
+        out
+    }
 }

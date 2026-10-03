@@ -107,6 +107,9 @@ fun App(vm: MainViewModel = viewModel()) {
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(30)
     ) { uris -> vm.batchFromUris(uris) }
+    val upscaleLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri -> if (uri != null) vm.upscaleUri(uri) }
     val camUri = remember { ImageUtils.cameraUri(ctx) }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         if (ok) vm.loadUri(camUri)
@@ -114,8 +117,8 @@ fun App(vm: MainViewModel = viewModel()) {
 
     // کاتێک وێنەیەک هەڵدەبژێردرێت یان کاری بەکۆمەڵ دەست پێدەکات، بگەڕێوە بۆ سەرەوە
     val mainScroll = rememberScrollState()
-    LaunchedEffect(vm.original, vm.cutout, vm.batch.size) {
-        if (vm.original != null || vm.cutout != null || vm.batch.isNotEmpty()) mainScroll.animateScrollTo(0)
+    LaunchedEffect(vm.original, vm.cutout, vm.batch.size, vm.upSrc) {
+        if (vm.original != null || vm.cutout != null || vm.batch.isNotEmpty() || vm.upSrc != null) mainScroll.animateScrollTo(0)
     }
 
     LaunchedEffect(vm.message) {
@@ -192,6 +195,17 @@ fun App(vm: MainViewModel = viewModel()) {
                     Icon(Icons.Default.PhotoLibrary, null); Spacer(Modifier.width(8.dp)); Text("لە گاڵەری")
                 }
             }
+            if (vm.upSrc == null) {
+                OutlinedButton(
+                    onClick = {
+                        upscaleLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                    },
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(8.dp))
+                    Text("Upscale ی وێنەیەک لە گاڵەری (×2 / ×4)")
+                }
+            }
 
             vm.busy?.let {
                 Column {
@@ -248,8 +262,18 @@ fun App(vm: MainViewModel = viewModel()) {
                         Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp))
                         Text("داگرتنی وێنەکە بەبێ لابردنی باکگراوند")
                     }
+                    OutlinedButton(
+                        onClick = { vm.upscaleFrom("original", 2) },
+                        enabled = vm.busy == null,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(6.dp))
+                        Text("Upscale ×2 ی ئەم وێنەیە")
+                    }
                 }
             }
+
+            UpscaleSection(vm, scope, upscaleLauncher)
 
             vm.cutout?.let { cut ->
                 SectionCard("ئەنجام — بێ باکگراوند (${cut.width}×${cut.height})" + if (vm.upscaled) " ✨ Upscale" else "") {
@@ -282,17 +306,15 @@ fun App(vm: MainViewModel = viewModel()) {
                         colors.forEach { c -> ColorChip(c, selected = vm.bgColor == c) { vm.bgColor = c } }
                     }
                     Spacer(Modifier.height(12.dp))
-                    if (!vm.upscaled && maxOf(cut.width, cut.height) < 2048) {
-                        OutlinedButton(
-                            onClick = vm::upscaleNow,
-                            enabled = vm.busy == null,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(6.dp))
-                            Text("Upscale بە AI (×٤) — گەورە و ڕوونکردنەوە")
-                        }
-                        Spacer(Modifier.height(8.dp))
+                    OutlinedButton(
+                        onClick = { vm.upscaleFrom("cutout", 2) },
+                        enabled = vm.busy == null,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(6.dp))
+                        Text("Upscale ×2 بە AI")
                     }
+                    Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = vm::save, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp)); Text("پاشەکەوت")
@@ -397,6 +419,12 @@ fun App(vm: MainViewModel = viewModel()) {
                                                 label = "داگرتن",
                                                 loading = item.fullUrl in vm.downloading
                                             ) { vm.downloadOne(item) }
+                                            TileIcon(
+                                                icon = Icons.Default.AutoAwesome,
+                                                label = "Upscale ×2",
+                                                text = "2×",
+                                                enabled = vm.busy == null
+                                            ) { vm.upscaleTile(item) }
                                         }
                                     }
                                     if (vm.selectMode) {
@@ -539,6 +567,7 @@ private fun TileIcon(
     label: String,
     enabled: Boolean = true,
     loading: Boolean = false,
+    text: String? = null,
     onClick: () -> Unit
 ) {
     Box(
@@ -551,6 +580,8 @@ private fun TileIcon(
     ) {
         if (loading) {
             CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+        } else if (text != null) {
+            Text(text, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
         } else {
             Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(20.dp))
         }
@@ -693,6 +724,77 @@ private fun EngineOption(
         Column {
             Text(title, style = MaterialTheme.typography.bodyMedium)
             Text(sub, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+    }
+}
+
+
+/** بەشی Upscale ی جیا: پێش / دوای، ×2 / ×4، پاشەکەوت و ناردن. */
+@Composable
+private fun UpscaleSection(
+    vm: MainViewModel,
+    scope: kotlinx.coroutines.CoroutineScope,
+    picker: androidx.activity.result.ActivityResultLauncher<PickVisualMediaRequest>
+) {
+    val src = vm.upSrc ?: return
+    val ctx = LocalContext.current
+    SectionCard("Upscale — گەورەکردن بە AI") {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("پێش" to src, "دوای Upscale" to vm.upRes).forEach { (label, bmp) ->
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(label, style = MaterialTheme.typography.labelMedium)
+                    Box(
+                        Modifier.fillMaxWidth().heightIn(min = 120.dp, max = 260.dp)
+                            .clip(RoundedCornerShape(10.dp)).checkerboard(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (bmp != null) {
+                            val img = remember(bmp) { bmp.asImageBitmap() }
+                            Image(img, null, modifier = Modifier.fillMaxWidth(), contentScale = ContentScale.Fit)
+                        } else {
+                            Text("—", color = Color.Gray)
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(vm.upInfo, style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = { vm.runUpscale(2) }, enabled = vm.busy == null, modifier = Modifier.weight(1f)) {
+                Text("Upscale ×2")
+            }
+            OutlinedButton(onClick = { vm.runUpscale(4) }, enabled = vm.busy == null, modifier = Modifier.weight(1f)) {
+                Text("Upscale ×4")
+            }
+        }
+        if (vm.upRes != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = vm::saveUpscaled, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Download, null); Spacer(Modifier.width(6.dp)); Text("پاشەکەوت")
+                }
+                OutlinedButton(onClick = {
+                    scope.launch {
+                        val uri = vm.shareUpscaledUri() ?: return@launch
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "image/png"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        ctx.startActivity(Intent.createChooser(send, "ناردن"))
+                    }
+                }, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Share, null); Spacer(Modifier.width(6.dp)); Text("ناردن")
+                }
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = {
+                picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            }, enabled = vm.busy == null) { Text("وێنەیەکی تر لە گاڵەری") }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = vm::closeUpscale, enabled = vm.busy == null) { Text("داخستن") }
         }
     }
 }
