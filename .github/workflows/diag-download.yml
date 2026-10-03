@@ -1,0 +1,24 @@
+name: Diag download
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/diag-download.yml", "desktop/tests/**"]
+jobs:
+  diag:
+    runs-on: windows-latest
+    defaults: { run: { working-directory: desktop } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -r requirements.txt
+      - name: diag
+        env: { SERPER_KEY: "${{ secrets.SERPER_KEY }}", PYTHONIOENCODING: utf-8 }
+        run: python tests/diag_download.py 2>&1 | Tee-Object diag.txt
+      - name: annotate
+        if: always()
+        shell: python
+        run: |
+          for l in open("diag.txt", encoding="utf-8", errors="replace"):
+              l = l.rstrip()
+              if l: print("::warning title=diag::" + l.replace("%", "%25"))
