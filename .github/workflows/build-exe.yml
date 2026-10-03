@@ -57,7 +57,7 @@ jobs:
           Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielgatis/rembg/main/examples/girl-2.jpg" -OutFile test.jpg
           $out = Join-Path (Get-Location) "py_out.png"
           python main.py --selftest test.jpg $out
-          Get-Content selftest.log
+          Get-Content selftest.log | ForEach-Object { "::warning title=py-selftest::$_" }
 
       - name: Self-test the EXE (cutout + upscale)
         timeout-minutes: 8
@@ -73,7 +73,8 @@ jobs:
             if ((Test-Path selftest.log) -and (Select-String -Path selftest.log -Pattern "SELFTEST OK")) { $ok = $true; break }
             if ($p.HasExited) { break }
           }
-          Get-Process | Where-Object { $_.MainWindowTitle } | Select-Object ProcessName, MainWindowTitle | Format-Table -AutoSize
+          if (Test-Path selftest.log) { Get-Content selftest.log | ForEach-Object { "::warning title=exe-selftest::$_" } } else { "::warning title=exe-selftest::no log file, exited=$($p.HasExited) code=$($p.ExitCode)" }
+          Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { "::warning title=window::$($_.ProcessName) | $($_.MainWindowTitle)" }
           if (-not $p.HasExited) { Stop-Process -Id $p.Id -Force }
           Get-Process BgRemover -ErrorAction SilentlyContinue | Stop-Process -Force
           if (-not $ok) { exit 1 }
@@ -83,7 +84,7 @@ jobs:
         run: |
           $p = Start-Process -FilePath dist\BgRemover.exe -ArgumentList "--smoke-test" -PassThru
           if (-not $p.WaitForExit(90000)) {
-            Get-Process | Where-Object { $_.MainWindowTitle } | Select-Object ProcessName, MainWindowTitle | Format-Table -AutoSize
+            Get-Process | Where-Object { $_.MainWindowTitle } | ForEach-Object { "::warning title=window::$($_.ProcessName) | $($_.MainWindowTitle)" }
             Stop-Process -Id $p.Id -Force; exit 1 }
           "exit code: $($p.ExitCode)"
           if ($p.ExitCode -ne 0) { exit 1 }
