@@ -14,7 +14,10 @@ android {
         targetSdk = 35
         versionCode = 18
         versionName = "4.6"
-        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            if (System.getenv("DIAG_X86") == "1") abiFilters += "x86_64"   // تەنها بۆ تاقیکردنەوە لە emulator
+        }
         // کلیلی Serper ی هاوبەش بۆ هەموو مۆبایلەکان (لە GitHub Secret ـەوە، نەک لە کۆدەکەدا)
         buildConfigField("String", "DEFAULT_SERPER_KEY", "\"${System.getenv("SERPER_KEY") ?: ""}\"")
     }

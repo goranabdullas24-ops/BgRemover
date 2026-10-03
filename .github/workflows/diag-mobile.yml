@@ -1,0 +1,37 @@
+name: Diag mobile
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/diag-mobile.yml", "app/diag.sh"]
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: "17" }
+      - uses: gradle/actions/setup-gradle@v5
+        with: { gradle-version: "8.7" }
+      - name: Build x86_64 APK
+        env: { DIAG_X86: "1", SERPER_KEY: "${{ secrets.SERPER_KEY }}" }
+        run: gradle :app:assembleRelease --no-daemon -q
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+      - name: Run on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: bash app/diag.sh
+      - name: Publish results
+        if: always()
+        run: |
+          mkdir -p out && cp -r diag/* out/ 2>/dev/null || true
+          cd out && git init -q && git checkout -q -b ci-diag && git add -A && git -c user.name=ci -c user.email=ci@x commit -qm diag
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-diag
