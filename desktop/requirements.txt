@@ -1,0 +1,8 @@
+PySide6-Essentials==6.8.1
+onnxruntime==1.19.2
+numpy<2.2
+scipy
+pillow
+pillow-avif-plugin
+pillow-heif
+requests

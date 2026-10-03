@@ -1,0 +1,73 @@
+name: Build Windows EXE
+
+on:
+  push:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/build-exe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller==6.11.1
+
+      - name: Test search and full-size download (live network)
+        shell: python
+        run: |
+          import sys; sys.path.insert(0, ".")
+          from bgremover import core
+          src, res = core.search("بافڵ تاڵەبانی")
+          print("search:", src, len(res))
+          b, low = core.fetch_image_bytes(res[0].full_url, res[0].thumb_url)
+          print("download:", len(b), core.sniff_ext(b), core.open_image(b).size, "low_quality:", low)
+          src2, res2 = core.search("white tiger")
+          print("search 2:", len(res2))
+          assert len(res) > 0 and len(res2) > 0
+
+      - name: Build EXE
+        run: |
+          python make_icon.py
+          pyinstaller --noconfirm --onefile --windowed --name BgRemover --icon icon.ico `
+            --collect-data onnxruntime --collect-binaries onnxruntime `
+            --hidden-import pillow_heif --hidden-import pillow_avif `
+            --exclude-module tkinter --exclude-module matplotlib `
+            main.py
+          dir dist
+
+      - name: Self-test the EXE (models download + cutout + upscale)
+        run: |
+          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielgatis/rembg/main/examples/girl-2.jpg" -OutFile test.jpg
+          $p = Start-Process -FilePath dist\BgRemover.exe -ArgumentList "--selftest","test.jpg","out.png" -Wait -PassThru -NoNewWindow -RedirectStandardOutput selftest.log
+          Get-Content selftest.log -Tail 5
+          if (-not (Select-String -Path selftest.log -Pattern "SELFTEST OK")) { exit 1 }
+          if (-not (Test-Path out.png)) { exit 1 }
+
+      - name: Smoke-test GUI start
+        run: |
+          $p = Start-Process -FilePath dist\BgRemover.exe -ArgumentList "--smoke-test" -Wait -PassThru
+          "exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { exit 1 }
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-v${{ github.run_number }}
+          name: BgRemover Desktop v${{ github.run_number }}
+          make_latest: false
+          files: desktop/dist/BgRemover.exe
