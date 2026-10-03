@@ -16,9 +16,10 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from PIL import Image
-from PySide6.QtCore import (QObject, QRunnable, QRect, QSize, Qt, QThreadPool, QTimer, Signal, QUrl, QPoint)
+from PySide6.QtCore import (QObject, QRunnable, QRect, QSize, Qt, QThreadPool, QTimer, Signal, QUrl, QPoint,
+                            QMimeData, QEventLoop)
 from PySide6.QtGui import (QAction, QColor, QDesktopServices, QGuiApplication, QIcon, QImage,
-                           QKeySequence, QPainter, QPixmap, QShortcut, QBrush)
+                           QKeySequence, QPainter, QPixmap, QShortcut, QBrush, QDrag, QCursor)
 from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QColorDialog, QDialog,
                                QDialogButtonBox, QFileDialog, QFrame, QGridLayout, QHBoxLayout,
                                QLabel, QLineEdit, QMainWindow, QMenu, QMessageBox, QProgressBar,
@@ -93,11 +94,65 @@ class Task(QRunnable):
             self.s.error.emit(str(e) or e.__class__.__name__)
 
 
-class Checker(QLabel):
-    """پیشاندانی وێنە لەسەر خانەخانە (بۆ ڕوونی) یان ڕەنگ."""
+def drag_dir() -> Path:
+    p = core.data_dir() / "drag"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def start_file_drag(widget: QWidget, path: Optional[Path], preview: Optional[QImage] = None):
+    """فایلەکە ڕادەکێشرێتە ناو بەرنامەیەکی تر (Photoshop، Premiere، Word، تێلێگرام، Explorer...)."""
+    if path is None or not Path(path).exists():
+        return
+    md = QMimeData()
+    md.setUrls([QUrl.fromLocalFile(str(path))])
+    d = QDrag(widget)
+    d.setMimeData(md)
+    if preview is not None and not preview.isNull():
+        pm = QPixmap.fromImage(preview.scaled(120, 120, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        d.setPixmap(pm)
+        d.setHotSpot(QPoint(pm.width() // 2, pm.height() // 2))
+    d.exec(Qt.CopyAction)
+
+
+class DragSource:
+    """کلیک = وەک پێشوو؛ ڕاکێشان = ناردنی وێنەکە بۆ بەرنامەیەکی تر."""
+    _press_pos: Optional[QPoint] = None
+    _dragged = False
+
+    def drag_path(self) -> Optional[Path]:  # override
+        return None
+
+    def drag_preview(self) -> Optional[QImage]:
+        return None
+
+    def ds_press(self, e):
+        self._dragged = False
+        self._press_pos = e.position().toPoint() if e.button() == Qt.LeftButton else None
+
+    def ds_move(self, e):
+        if self._press_pos is None or not (e.buttons() & Qt.LeftButton):
+            return
+        if (e.position().toPoint() - self._press_pos).manhattanLength() < QApplication.startDragDistance():
+            return
+        self._press_pos = None
+        self._dragged = True
+        p = self.drag_path()
+        if p is not None:
+            start_file_drag(self, p, self.drag_preview())
+
+    def ds_was_drag(self) -> bool:
+        d = self._dragged
+        self._dragged = False
+        return d
+
+
+class Checker(DragSource, QLabel):
+    """پیشاندانی وێنە لەسەر خانەخانە (بۆ ڕوونی) یان ڕەنگ. دەتوانرێت ڕابکێشرێتە دەرەوە."""
 
     def __init__(self, min_h=260):
         super().__init__()
+        self.path_provider: Optional[Callable[[], Optional[Path]]] = None
         self.setAlignment(Qt.AlignCenter)
         self.setMinimumHeight(min_h)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -107,7 +162,24 @@ class Checker(QLabel):
 
     def set_image(self, img: Optional[QImage]):
         self._img = img
+        if self.path_provider:
+            self.setCursor(Qt.OpenHandCursor if img is not None else Qt.ArrowCursor)
+            self.setToolTip("ڕایبکێشە ناو هەر بەرنامەیەک (Photoshop، Premiere، Word...)" if img is not None else "")
         self.update()
+
+    def drag_path(self):
+        return self.path_provider() if (self.path_provider and self._img is not None) else None
+
+    def drag_preview(self):
+        return self._img
+
+    def mousePressEvent(self, e):
+        self.ds_press(e)
+        super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e):
+        self.ds_move(e)
+        super().mouseMoveEvent(e)
 
     def paintEvent(self, _):
         p = QPainter(self)
@@ -170,7 +242,7 @@ def color_chip(color, selected: bool, cb) -> QToolButton:
 
 # ───────────────────────── خانەی وێنەی گەڕان ─────────────────────────
 
-class Tile(QFrame):
+class Tile(DragSource, QFrame):
     clicked = Signal(object, bool)   # result, ctrl
     remove = Signal(object)
     download = Signal(object)
@@ -240,7 +312,24 @@ class Tile(QFrame):
             f"background:{PURPLE if self.sel else 'rgba(0,0,0,90)'};border:2px solid white;")
         self.setStyleSheet(f"Tile{{background:#EDEDF4;border-radius:10px;border:{'3px solid ' + PURPLE if self.sel else 'none'};}}")
 
+    drag_request = None  # Callable[[ImageResult], Optional[Path]] — لە MainWindow دادەنرێت
+
+    def drag_path(self):
+        return Tile.drag_request(self.r) if Tile.drag_request else None
+
+    def drag_preview(self):
+        pm = self.img.pixmap()
+        return pm.toImage() if pm is not None and not pm.isNull() else None
+
+    def mousePressEvent(self, e):
+        self.ds_press(e)
+
+    def mouseMoveEvent(self, e):
+        self.ds_move(e)
+
     def mouseReleaseEvent(self, e):
+        if self.ds_was_drag():
+            return
         if e.button() == Qt.LeftButton:
             self.clicked.emit(self.r, bool(e.modifiers() & Qt.ControlModifier))
 
@@ -256,7 +345,7 @@ class FlowGrid(QWidget):
         self.grid = QGridLayout(self)
         self.grid.setSpacing(8)
         self.grid.setContentsMargins(0, 0, 0, 0)
-        self.grid.setAlignment(Qt.AlignTop | Qt.AlignRight)
+        self.grid.setAlignment(Qt.AlignTop | Qt.AlignLeading)   # لە RTL = ڕاست
         self.items: list[QWidget] = []
         self.cols = 3
 
@@ -296,7 +385,7 @@ class BatchItem:
     error: str = ""
 
 
-class BatchTile(QFrame):
+class BatchTile(DragSource, QFrame):
     def __init__(self, item: BatchItem, open_cb):
         super().__init__()
         self.item = item
@@ -322,7 +411,21 @@ class BatchTile(QFrame):
         self.lbl.setStyleSheet("color:#D93025;font-size:9pt;background:rgba(255,255,255,170);" if st == "ERROR"
                                else "font-size:18pt;background:transparent;")
 
+    def drag_path(self):
+        return Path(self.item.file) if self.item.status == "DONE" and self.item.file else None
+
+    def drag_preview(self):
+        return self.view._img
+
+    def mousePressEvent(self, e):
+        self.ds_press(e)
+
+    def mouseMoveEvent(self, e):
+        self.ds_move(e)
+
     def mouseReleaseEvent(self, e):
+        if self.ds_was_drag():
+            return
         if self.item.status == "DONE":
             self.open_cb(self.item)
 
@@ -438,6 +541,8 @@ class MainWindow(QMainWindow):
         self.next_id = 1
         self.downloading: set[str] = set()
         self.dl_pool = ThreadPoolExecutor(3)
+        self._tile_drag_cache: dict[str, Path] = {}
+        Tile.drag_request = self._drag_tile_path
         self.dl_count = 0
         self.dl_shown_folder = False
 
@@ -492,7 +597,11 @@ class MainWindow(QMainWindow):
         rv.addWidget(self.prog)
         rv.addWidget(self.prog_lbl)
 
-        split = QSplitter(Qt.Horizontal)
+        # وەک مۆبایل: لابردن و داگرتن لە سەرەوە، وێنەکانی گەڕان لە خوارەوە
+        split = QSplitter(Qt.Vertical)
+        split.setChildrenCollapsible(False)
+        split.setHandleWidth(8)
+        self.split = split
         rv.addWidget(split, 1)
 
         # ── لای ڕاست: کار (سەرەکی، ئەنجام، بەکۆمەڵ) ──
@@ -502,7 +611,7 @@ class MainWindow(QMainWindow):
         work_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         work = QWidget()
         self.work_v = QVBoxLayout(work)
-        self.work_v.setContentsMargins(0, 0, 8, 0)
+        self.work_v.setContentsMargins(0, 0, 8, 4)
         self.work_v.setSpacing(12)
         work_scroll.setWidget(work)
         self.work_scroll = work_scroll
@@ -545,9 +654,10 @@ class MainWindow(QMainWindow):
         pair = QHBoxLayout()
         pair.setSpacing(12)
         self.orig_card, ov, self.orig_title = card("وێنەی سەرەکی")
-        self.orig_view = Checker(320)
+        self.orig_view = Checker(220)
         self.orig_card.setMinimumWidth(300)
         self.orig_view.checker = False
+        self.orig_view.path_provider = self._drag_orig_path
         ov.addWidget(self.orig_view, 1)
         self.low_lbl = QLabel("⚠ ئەم ماڵپەڕە ڕێگەی بە داگرتنی وێنە ئەسڵییەکە نەدا؛ تەنها وێنە بچووکەکەی بەردەستە.")
         self.low_lbl.setStyleSheet("color:#D93025;")
@@ -561,7 +671,8 @@ class MainWindow(QMainWindow):
         ov.addLayout(orow)
 
         self.res_card, resv, self.res_title = card("ئەنجام — بێ باکگراوند")
-        self.res_view = Checker(320)
+        self.res_view = Checker(220)
+        self.res_view.path_provider = self._drag_result_path
         self.res_card.setMinimumWidth(300)
         resv.addWidget(self.res_view, 1)
         crow = QHBoxLayout()
@@ -587,9 +698,10 @@ class MainWindow(QMainWindow):
         self.res_card.hide()
 
         self.hint = QLabel("ناوێک بنووسە و بگەڕێ، یان وێنەیەک بکەرەوە، ڕایبکێشە ناو پەنجەرەکە (Drag & Drop)، یان Ctrl+V.\n\n"
-                           "✨ = لابردنی باکگراوند   ⬇ = داگرتن بە قەبارەی ئەسڵی   Ctrl+کلیک = هەڵبژاردنی چەند وێنەیەک")
+                           "✨ = لابردنی باکگراوند   ⬇ = داگرتن بە قەبارەی ئەسڵی   Ctrl+کلیک = هەڵبژاردنی چەند وێنەیەک\n"
+                           "هەر وێنەیەک (ئەنجام یان گەڕان) ڕابکێشە ناو Photoshop، Premiere، Word یان هەر بەرنامەیەکی تر")
         self.hint.setAlignment(Qt.AlignCenter)
-        self.hint.setStyleSheet("color:#777;font-size:11.5pt;padding:60px;")
+        self.hint.setStyleSheet("color:#777;font-size:11.5pt;padding:14px;")
         self.work_v.addWidget(self.hint)
         self.work_v.addStretch(1)
         split.addWidget(work_scroll)
@@ -597,7 +709,7 @@ class MainWindow(QMainWindow):
         # ── لای چەپ: ئەنجامەکانی گەڕان ──
         res_panel = QWidget()
         rp = QVBoxLayout(res_panel)
-        rp.setContentsMargins(8, 0, 0, 0)
+        rp.setContentsMargins(0, 4, 0, 0)
         self.res_head = QLabel("")
         self.res_head.setObjectName("cardTitle")
         self.res_head.setWordWrap(True)
@@ -613,6 +725,7 @@ class MainWindow(QMainWindow):
         self.grid_scroll.setWidgetResizable(True)
         self.grid_scroll.setFrameShape(QFrame.NoFrame)
         self.grid_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.grid_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)   # پانی جێگیر → خانەکان نابڕدرێن
         gw = QWidget()
         gv = QVBoxLayout(gw)
         gv.setContentsMargins(0, 0, 0, 0)
@@ -628,9 +741,8 @@ class MainWindow(QMainWindow):
         self.grid_scroll.setWidget(gw)
         rp.addWidget(self.grid_scroll, 1)
         split.addWidget(res_panel)
-        split.setSizes([880, 480])
-        split.setStretchFactor(0, 3)
-        split.setStretchFactor(1, 2)
+        split.setStretchFactor(0, 1)
+        split.setStretchFactor(1, 1)
         self.res_panel = res_panel
         self._update_results_ui()
 
@@ -640,6 +752,7 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         QTimer.singleShot(0, self._relayout)
+        QTimer.singleShot(0, self._fit_split)
 
     def _relayout(self):
         self.grid.relayout(self.grid_scroll.viewport().width() - 4, Tile.SIZE)
@@ -804,7 +917,8 @@ class MainWindow(QMainWindow):
         if self.select_mode:
             self.res_head.setText(f"{len(self.selected)} وێنە هەڵبژێردراوە")
         elif has:
-            self.res_head.setText(f"{len(self.results)} وێنە — ✨ لابردنی باکگراوند، ⬇ داگرتن، Ctrl+کلیک بۆ چەندان")
+            self.res_head.setText(f"{len(self.results)} وێنە — ✨ لابردنی باکگراوند، ⬇ داگرتن، Ctrl+کلیک بۆ چەندان، "
+                                  "ڕاکێشان بۆ ناو بەرنامەیەکی تر")
         else:
             self.res_head.setText("ئەنجامەکانی گەڕان لێرە دەردەکەون")
         self.b_selmode.setText("هەڵوەشاندنەوە" if self.select_mode else "☑  هەڵبژاردنی چەند وێنەیەک")
@@ -818,6 +932,7 @@ class MainWindow(QMainWindow):
         self.b_sel_rm.setText(f"✨  لابردنی باکگراوندی {n} وێنە")
         self.b_sel_dl.setText(f"⬇  داگرتنی {n} وێنە بەبێ لابردنی باکگراوند")
         QTimer.singleShot(0, self._relayout)
+        QTimer.singleShot(0, self._fit_split)
 
     # ───── یەک وێنە ─────
     def pick(self, r: core.ImageResult):
@@ -866,6 +981,21 @@ class MainWindow(QMainWindow):
         self.res_view.update()
         self.b_up.setVisible(has_c and not self.upscaled and max(self.cutout.size) < 2048 if has_c else False)
         self.work_scroll.verticalScrollBar().setValue(0)
+        self._fit_split()
+
+    def _fit_split(self):
+        """کاتێک وێنەیەک یان بەکۆمەڵ هەیە بەشی سەرەوە گەورە دەبێت؛ ئەگەرنا بچووک."""
+        total = max(400, self.split.height())
+        busy_top = (self.original is not None or self.cutout is not None or bool(self.batch)
+                    or self.sel_bar.isVisible())
+        if busy_top:
+            want = int(total * 0.6) if (self.original is not None or self.batch) else 90
+        else:
+            want = 150 if self.results else int(total * 0.5)
+        key = (busy_top, self.original is not None, bool(self.batch), bool(self.results), total)
+        if getattr(self, "_split_key", None) != key:
+            self._split_key = key
+            self.split.setSizes([want, total - want])
 
     def cut_opts(self) -> core.CutOptions:
         s = self.settings
@@ -965,6 +1095,70 @@ class MainWindow(QMainWindow):
             self.message(f"پاشەکەوت سەرنەکەوت: {e}", 10000)
             return
         self.message(f"✔ پاشەکەوت کرا: {path}", 12000)
+
+    # ───── ڕاکێشان بۆ بەرنامەکانی تر ─────
+    def _drag_result_path(self) -> Optional[Path]:
+        if self.cutout is None:
+            return None
+        key = (id(self.cutout), self.bg)
+        if getattr(self, "_drag_cache_key", None) == key and self._drag_cache_path.exists():
+            return self._drag_cache_path
+        p = drag_dir() / f"{core.safe_filename(self.orig_name)}_nobg.png"
+        try:
+            self.final_image(self.cutout).save(p)
+        except Exception as e:  # noqa: BLE001
+            self.message(f"ڕاکێشان سەرنەکەوت: {e}")
+            return None
+        self._drag_cache_key, self._drag_cache_path = key, p
+        return p
+
+    def _drag_orig_path(self) -> Optional[Path]:
+        if self.original is None:
+            return None
+        d = drag_dir() / "original"
+        for f in d.glob("*"):
+            f.unlink(missing_ok=True)
+        try:
+            if self.orig_bytes and core.sniff_ext(self.orig_bytes):
+                return core.save_downloaded(self.orig_bytes, d, self.orig_name)
+            d.mkdir(parents=True, exist_ok=True)
+            p = d / f"{core.safe_filename(self.orig_name)}.png"
+            self.original.save(p)
+            return p
+        except Exception as e:  # noqa: BLE001
+            self.message(f"ڕاکێشان سەرنەکەوت: {e}")
+            return None
+
+    def _drag_tile_path(self, r: core.ImageResult) -> Optional[Path]:
+        """وێنە ئەسڵییەکە (قەبارەی تەواو) دادەبەزێنێت ئینجا ڕایدەکێشێت."""
+        cache = self._tile_drag_cache.get(r.full_url)
+        if cache and cache.exists():
+            return cache
+        box: dict = {}
+
+        def job():
+            try:
+                b, _ = core.fetch_image_bytes(r.full_url, r.thumb_url, r.page_url)
+                name = Path(urllib_unquote(r.full_url.split("?")[0])).stem or r.title or "image"
+                box["p"] = core.save_downloaded(b, drag_dir() / "web", name)
+            except Exception as e:  # noqa: BLE001
+                box["e"] = str(e)
+        fut = self.dl_pool.submit(job)
+        QApplication.setOverrideCursor(QCursor(Qt.WaitCursor))
+        self.message("داگرتنی وێنەکە بە قەبارەی تەواو بۆ ڕاکێشان...", 30000)
+        try:
+            t0 = time.time()
+            while not fut.done() and time.time() - t0 < 60:
+                QApplication.processEvents(QEventLoop.ExcludeUserInputEvents, 50)
+                time.sleep(0.02)
+        finally:
+            QApplication.restoreOverrideCursor()
+        if "p" not in box:
+            self.message(f"ئەم وێنەیە دانابەزێت ({box.get('e', 'کات تەواو بوو')})", 10000)
+            return None
+        self.message("✔ ئێستا ڕایبکێشە ناو بەرنامەکە", 5000)
+        self._tile_drag_cache[r.full_url] = box["p"]
+        return box["p"]
 
     def copy_result(self):
         if self.cutout is not None:
@@ -1076,6 +1270,8 @@ class MainWindow(QMainWindow):
             self.submit()
 
     def dragEnterEvent(self, e):
+        if e.source() is not None:   # ڕاکێشان لەناو خودی بەرنامەکەوە
+            return
         if e.mimeData().hasUrls() or e.mimeData().hasImage():
             e.acceptProposedAction()
 
@@ -1112,6 +1308,7 @@ class MainWindow(QMainWindow):
             self.batch_grid.add(t)
             self._refresh_batch_tile(it.id)
         QTimer.singleShot(0, self._relayout)
+        QTimer.singleShot(0, self._fit_split)
 
     def _refresh_batch_tile(self, bid: int):
         it = next((b for b in self.batch if b.id == bid), None)
@@ -1269,6 +1466,7 @@ class MainWindow(QMainWindow):
             pass
         shutil.rmtree(d, ignore_errors=True)
         shutil.rmtree(core.data_dir() / "batch", ignore_errors=True)
+        shutil.rmtree(core.data_dir() / "drag", ignore_errors=True)
         self._build_chips()
         self._populate_grid()
         self._show_work()

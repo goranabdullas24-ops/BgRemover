@@ -12,8 +12,8 @@ android {
         applicationId = "krd.bgremover"
         minSdk = 29
         targetSdk = 35
-        versionCode = 18
-        versionName = "4.6"
+        versionCode = 19
+        versionName = "4.7"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
             if (System.getenv("DIAG_X86") == "1") abiFilters += "x86_64"   // تەنها بۆ تاقیکردنەوە لە emulator

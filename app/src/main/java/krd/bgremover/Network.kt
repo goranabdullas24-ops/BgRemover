@@ -100,8 +100,11 @@ object ImageSearch {
      */
     suspend fun search(query: String, serperKey: String, page: Int = 1): Pair<String, List<ImageResult>> =
         withContext(Dispatchers.IO) {
-            if (serperKey.isNotBlank()) "Google" to googleViaSerper(query, serperKey.trim(), page)
-            else "free" to freeSearch(query, page)
+            // ئەگەر Serper کار نەکات (کلیل هەڵە/تەواوبوو) یان هیچی نەدا → سەرچاوە بەخۆڕاییەکان
+            val google = if (serperKey.isNotBlank())
+                runCatching { googleViaSerper(query, serperKey.trim(), page) }.getOrNull().orEmpty()
+            else emptyList()
+            if (google.isNotEmpty()) "Google" to google else "free" to freeSearch(query, page)
         }
 
     private fun googleViaSerper(q: String, key: String, page: Int): List<ImageResult> {

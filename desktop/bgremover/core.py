@@ -39,7 +39,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "1.3"
+VERSION = "1.4"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 
@@ -233,7 +233,13 @@ def _serper(q: str, key: str, page: int) -> list[ImageResult]:
 def search(q: str, serper_key: str = "", page: int = 1) -> tuple[str, list[ImageResult]]:
     """دەگەڕێتەوە: (سەرچاوە، لیست). بە Serper → گۆگڵ؛ بەبێ کلیل → سەرچاوە بەخۆڕاییەکان."""
     if serper_key.strip():
-        return "Google", _serper(q, serper_key.strip(), page)
+        # ئەگەر Serper کار نەکات (کلیل هەڵە/تەواوبوو) یان هیچی نەدا → سەرچاوە بەخۆڕاییەکان
+        try:
+            res = _serper(q, serper_key.strip(), page)
+            if res:
+                return "Google", res
+        except Exception:  # noqa: BLE001
+            pass
     from concurrent.futures import ThreadPoolExecutor
     fns = []
     if page <= 3:
