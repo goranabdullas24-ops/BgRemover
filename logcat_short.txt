@@ -1,0 +1,155 @@
+10-03 14:33:00.188   424   569 V installd: DexInv: --- END '/data/app/~~d1H8xo-PM0LakN-oPR3T3A==/krd.bgremover-_9NhvSNayk2_wMXQnVifbg==/base.apk' (success) ---
+10-03 14:33:00.193   494   550 V BackupManagerService: [UserID:0] restoreAtInstall pkg=krd.bgremover token=1 restoreSet=0
+10-03 14:33:00.670  1525  1525 I MediaProvider: Invalidating LocalCallingIdentity cache for package krd.bgremover. Reason: package android.intent.action.PACKAGE_ADDED
+10-03 14:33:00.670  1531  1531 I GsaVoiceInteractionSrv: O received Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) }
+10-03 14:33:00.678   687   687 D AvrcpMediaPlayerList: Name of package changed: krd.bgremover
+10-03 14:33:01.232  1172  3401 W GCM     : Unexpected forwarded intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) }
+10-03 14:33:01.248  1846  3926 I ChromeSync: [Sync,SyncIntentOperation] Handling the intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 cmp=com.google.android.gms/.chimera.GmsIntentOperationService (has extras) }.
+10-03 14:33:01.256  1846  3926 I ChromeSync: [Persistence,AffiliationManager] One of affiliation or grouping data for android://qd3fyAJUyEgMYDyN86qUIiPO1LOzvrP7_oZd7vCGw9dKQ1sRLlOnEHfrIJOSnHKC4ln93URUVZubLfyiDKL6Qw==@krd.bgremover/ was not found. Marking affiliation data as stale...
+10-03 14:33:01.313  1172  3401 W GCM     : Unexpected forwarded intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) }
+10-03 14:33:01.456  3921  3921 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:01.470  3921  3921 I AndroidRuntime: Using default boot image
+10-03 14:33:01.470  3921  3921 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:01.775  3921  3921 D AndroidRuntime: Calling main entry com.android.commands.monkey.Monkey
+10-03 14:33:01.776  3921  3921 W Monkey  : args: [-p, krd.bgremover, -c, android.intent.category.LAUNCHER, 1]
+10-03 14:33:01.776  3921  3921 W Monkey  :  arg: "krd.bgremover"
+10-03 14:33:01.777  3921  3921 W Monkey  : data="krd.bgremover"
+10-03 14:33:01.851   494   969 I ActivityTaskManager: START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=krd.bgremover/.MainActivity} from uid 2000
+10-03 14:33:01.919   494   534 I ActivityManager: Start proc 4000:krd.bgremover/u0a167 for pre-top-activity {krd.bgremover/krd.bgremover.MainActivity}
+10-03 14:33:01.941  4000  4000 W krd.bgremover: Unexpected CPU variant for X86 using defaults: x86_64
+10-03 14:33:01.992  3921  3921 I AndroidRuntime: VM exiting with result code 0.
+10-03 14:33:02.983   494   532 D ArtManagerInternalImpl: /data/misc/iorapd/krd.bgremover/20/krd.bgremover.MainActivity/compiled_traces/compiled_trace.pb doesn't exist
+10-03 14:33:02.996   494   532 I ActivityTaskManager: Displayed krd.bgremover/.MainActivity: +763ms
+10-03 14:33:07.159   494   999 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.packageinstaller/com.android.packageinstaller.PackageInstalledReceiver
+10-03 14:33:07.159   494   533 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.gms/.games.chimera.GamesSystemBroadcastReceiverProxy
+10-03 14:33:07.159   494   533 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.gms/.gass.chimera.PackageChangeBroadcastReceiver
+10-03 14:33:07.159   494   533 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.gms/.chimera.GmsIntentOperationService$PersistentTrustedReceiver
+10-03 14:33:07.159   494   533 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.googlequicksearchbox/com.google.android.apps.gsa.googlequicksearchbox.GelStubAppWatcher
+10-03 14:33:07.159   494   533 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.ims/.receivers.RcsAutoStartReceiver
+10-03 14:33:07.234   425  3998 I iorapd  : Perfetto TraceBuffer saved to file: /data/misc/iorapd/krd.bgremover/20/krd.bgremover.MainActivity/raw_traces/1791037987232825526.perfetto_trace.pb
+10-03 14:33:07.467  4000  4987 D ProfileInstaller: Installing profile for krd.bgremover
+10-03 14:33:17.177  5348  5348 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:17.185  5348  5348 I AndroidRuntime: Using default boot image
+10-03 14:33:17.185  5348  5348 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:17.350  5348  5348 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-03 14:33:18.418  5348  5348 D AndroidRuntime: Shutting down VM
+10-03 14:33:18.953  5370  5370 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:18.954  5370  5370 I AndroidRuntime: Using default boot image
+10-03 14:33:18.954  5370  5370 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:18.997  5370  5370 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-03 14:33:19.011  5370  5370 D AndroidRuntime: Shutting down VM
+10-03 14:33:19.160  1365  1365 I AndroidIME: AbstractIme.onActivate():84 LatinIme.onActivate() : EditorInfo = Package = krd.bgremover : Type = Text : Learning = Enable : Suggestion = Show : AutoCorrection = Enable : Microphone = Show : NoPersonalizedLearning = Disable : AutoStartVoiceInput = Disable, IncognitoMode = false
+10-03 14:33:21.467  5426  5426 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:21.468  5426  5426 I AndroidRuntime: Using default boot image
+10-03 14:33:21.468  5426  5426 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:21.515  5426  5426 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-03 14:33:21.528  5426  5426 D AndroidRuntime: Shutting down VM
+10-03 14:33:22.978  5440  5440 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:22.979  5440  5440 I AndroidRuntime: Using default boot image
+10-03 14:33:22.979  5440  5440 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:23.020  5440  5440 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-03 14:33:23.033  5440  5440 D AndroidRuntime: Shutting down VM
+10-03 14:33:24.484  5453  5453 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:24.485  5453  5453 I AndroidRuntime: Using default boot image
+10-03 14:33:24.485  5453  5453 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:24.525  5453  5453 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-03 14:33:24.532  5453  5453 D AndroidRuntime: Shutting down VM
+10-03 14:33:26.054  4000  4030 I TetheringManager: registerTetheringEventCallback:krd.bgremover
+10-03 14:33:27.093  4000  4015 I krd.bgremover: NativeAlloc concurrent copying GC freed 284413(14MB) AllocSpace objects, 63(2396KB) LOS objects, 49% free, 14MB/29MB, paused 59us total 813.398ms
+10-03 14:33:50.179  5611  5611 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:50.180  5611  5611 I AndroidRuntime: Using default boot image
+10-03 14:33:50.180  5611  5611 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:50.221  5611  5611 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-03 14:33:51.258  5611  5611 D AndroidRuntime: Shutting down VM
+10-03 14:33:51.707  5627  5627 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:51.708  5627  5627 I AndroidRuntime: Using default boot image
+10-03 14:33:51.708  5627  5627 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:51.749  5627  5627 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-03 14:33:52.164  5627  5627 D AndroidRuntime: Shutting down VM
+10-03 14:33:54.612  5641  5641 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:54.614  5641  5641 I AndroidRuntime: Using default boot image
+10-03 14:33:54.614  5641  5641 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:54.653  5641  5641 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-03 14:33:55.707  5641  5641 D AndroidRuntime: Shutting down VM
+10-03 14:33:56.315  5662  5662 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:33:56.316  5662  5662 I AndroidRuntime: Using default boot image
+10-03 14:33:56.316  5662  5662 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:33:56.361  5662  5662 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-03 14:33:56.368  5662  5662 D AndroidRuntime: Shutting down VM
+10-03 14:33:57.635  4000  4015 I krd.bgremover: Background concurrent copying GC freed 18305(847KB) AllocSpace objects, 23(460KB) LOS objects, 44% free, 29MB/53MB, paused 57us total 106.085ms
+10-03 14:34:01.224  4000  4015 I krd.bgremover: NativeAlloc concurrent copying GC freed 61128(9054KB) AllocSpace objects, 4(19MB) LOS objects, 49% free, 16MB/32MB, paused 546us total 156.702ms
+10-03 14:34:07.605  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5561(175KB) AllocSpace objects, 12(21MB) LOS objects, 49% free, 16MB/32MB, paused 67us total 307.094ms
+10-03 14:34:14.124  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5708(167KB) AllocSpace objects, 11(22MB) LOS objects, 50% free, 16MB/32MB, paused 23us total 159.069ms
+10-03 14:34:19.668  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 251(29KB) AllocSpace objects, 5(9408KB) LOS objects, 7% free, 30MB/32MB, paused 15.297ms total 38.291ms
+10-03 14:34:19.940  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5594(162KB) AllocSpace objects, 11(22MB) LOS objects, 49% free, 16MB/32MB, paused 269us total 254.616ms
+10-03 14:34:26.961  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5741(184KB) AllocSpace objects, 11(22MB) LOS objects, 50% free, 16MB/33MB, paused 34us total 150.385ms
+10-03 14:34:50.067  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10774(276KB) AllocSpace objects, 10(23MB) LOS objects, 49% free, 17MB/34MB, paused 47us total 154.453ms
+10-03 14:34:52.900  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 339(45KB) AllocSpace objects, 5(9828KB) LOS objects, 29% free, 24MB/34MB, paused 16us total 114.130ms
+10-03 14:34:56.551  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10713(274KB) AllocSpace objects, 11(23MB) LOS objects, 49% free, 17MB/34MB, paused 39us total 412.978ms
+10-03 14:35:02.461  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5618(162KB) AllocSpace objects, 11(23MB) LOS objects, 50% free, 17MB/34MB, paused 32us total 128.234ms
+10-03 14:35:05.236  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 338(45KB) AllocSpace objects, 5(9828KB) LOS objects, 29% free, 24MB/34MB, paused 12us total 153.438ms
+10-03 14:35:08.021  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10694(274KB) AllocSpace objects, 11(23MB) LOS objects, 50% free, 17MB/34MB, paused 51us total 197.791ms
+10-03 14:35:13.577  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5510(163KB) AllocSpace objects, 12(23MB) LOS objects, 49% free, 16MB/33MB, paused 31us total 221.532ms
+10-03 14:35:16.231  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 338(45KB) AllocSpace objects, 5(9828KB) LOS objects, 28% free, 24MB/33MB, paused 13us total 151.159ms
+10-03 14:35:19.345  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10700(274KB) AllocSpace objects, 11(23MB) LOS objects, 49% free, 12MB/24MB, paused 36us total 424.462ms
+10-03 14:35:23.436  4000  4015 I krd.bgremover: Background concurrent copying GC freed 681(57KB) AllocSpace objects, 9(16MB) LOS objects, 49% free, 18MB/37MB, paused 29us total 277.080ms
+10-03 14:35:34.500  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 5338(184KB) AllocSpace objects, 5(9828KB) LOS objects, 6% free, 31MB/33MB, paused 16.928ms total 25.749ms
+10-03 14:35:34.681  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5707(167KB) AllocSpace objects, 9(21MB) LOS objects, 50% free, 18MB/37MB, paused 50us total 178.235ms
+10-03 14:35:40.558  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5254(145KB) AllocSpace objects, 13(25MB) LOS objects, 50% free, 16MB/33MB, paused 30.282ms total 368.092ms
+10-03 14:35:46.765  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10871(292KB) AllocSpace objects, 10(23MB) LOS objects, 49% free, 17MB/34MB, paused 2.857ms total 642.544ms
+10-03 14:35:55.096  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 338(45KB) AllocSpace objects, 5(9828KB) LOS objects, 28% free, 24MB/33MB, paused 14us total 137.022ms
+10-03 14:35:58.609  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10698(290KB) AllocSpace objects, 11(23MB) LOS objects, 49% free, 12MB/24MB, paused 38us total 513.822ms
+10-03 14:36:02.503  4000  4015 I krd.bgremover: Background concurrent copying GC freed 516(40KB) AllocSpace objects, 8(15MB) LOS objects, 50% free, 18MB/37MB, paused 29us total 108.264ms
+10-03 14:36:07.689  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 5366(152KB) AllocSpace objects, 9(16MB) LOS objects, 25% free, 28MB/37MB, paused 9.816ms total 24.100ms
+10-03 14:36:10.273  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5919(181KB) AllocSpace objects, 11(19MB) LOS objects, 42% free, 32MB/56MB, paused 16us total 231.065ms
+10-03 14:36:23.850  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 5332(152KB) AllocSpace objects, 5(9828KB) LOS objects, 11% free, 30MB/33MB, paused 9.583ms total 23.663ms
+10-03 14:36:26.854  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 340(45KB) AllocSpace objects, 5(9828KB) LOS objects, 29% free, 24MB/34MB, paused 13us total 164.809ms
+10-03 14:36:29.872  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10704(274KB) AllocSpace objects, 11(23MB) LOS objects, 49% free, 17MB/34MB, paused 38us total 239.753ms
+10-03 14:36:35.211  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5616(162KB) AllocSpace objects, 12(23MB) LOS objects, 49% free, 12MB/24MB, paused 33us total 131.070ms
+10-03 14:36:39.116  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 5335(152KB) AllocSpace objects, 5(2868KB) LOS objects, 0% free, 27MB/27MB, paused 6.757ms total 41.331ms
+10-03 14:36:42.148  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 340(45KB) AllocSpace objects, 5(9828KB) LOS objects, 28% free, 24MB/33MB, paused 14us total 117.008ms
+10-03 14:36:44.894  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5513(178KB) AllocSpace objects, 11(23MB) LOS objects, 49% free, 16MB/33MB, paused 36us total 287.446ms
+10-03 14:36:53.373  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 340(45KB) AllocSpace objects, 5(9828KB) LOS objects, 28% free, 24MB/33MB, paused 14us total 154.890ms
+10-03 14:36:55.790  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10712(274KB) AllocSpace objects, 11(23MB) LOS objects, 49% free, 16MB/33MB, paused 37us total 176.097ms
+10-03 14:37:01.397  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5633(178KB) AllocSpace objects, 11(23MB) LOS objects, 50% free, 16MB/33MB, paused 32us total 125.815ms
+10-03 14:37:07.066  4000  4021 I krd.bgremover: Waiting for a blocking GC ProfileSaver
+10-03 14:37:07.111  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10710(290KB) AllocSpace objects, 10(23MB) LOS objects, 49% free, 17MB/34MB, paused 36us total 442.886ms
+10-03 14:37:07.111  4000  4021 I krd.bgremover: WaitForGcToComplete blocked ProfileSaver on HeapTrim for 44.759ms
+10-03 14:37:12.538  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5615(162KB) AllocSpace objects, 12(23MB) LOS objects, 49% free, 12MB/24MB, paused 31.507ms total 184.746ms
+10-03 14:37:16.610  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5683(166KB) AllocSpace objects, 8(11MB) LOS objects, 49% free, 16MB/33MB, paused 34us total 146.614ms
+10-03 14:37:22.546  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5504(163KB) AllocSpace objects, 10(23MB) LOS objects, 49% free, 17MB/34MB, paused 37us total 171.583ms
+10-03 14:37:24.864  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 338(45KB) AllocSpace objects, 5(9828KB) LOS objects, 29% free, 24MB/34MB, paused 13us total 165.845ms
+10-03 14:37:27.890  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10694(274KB) AllocSpace objects, 12(23MB) LOS objects, 49% free, 16MB/33MB, paused 58us total 299.650ms
+10-03 14:37:34.262  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10707(274KB) AllocSpace objects, 10(23MB) LOS objects, 49% free, 17MB/34MB, paused 35us total 516.424ms
+10-03 14:37:40.084  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5615(162KB) AllocSpace objects, 12(23MB) LOS objects, 49% free, 16MB/33MB, paused 34us total 372.172ms
+10-03 14:37:43.105  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 342(44KB) AllocSpace objects, 5(9828KB) LOS objects, 29% free, 24MB/33MB, paused 31us total 130.453ms
+10-03 14:37:49.355  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 340(45KB) AllocSpace objects, 5(9828KB) LOS objects, 29% free, 24MB/34MB, paused 14us total 107.120ms
+10-03 14:37:52.274  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5515(163KB) AllocSpace objects, 12(23MB) LOS objects, 49% free, 12MB/24MB, paused 35us total 313.452ms
+10-03 14:37:58.884  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 5492(169KB) AllocSpace objects, 11(18MB) LOS objects, 38% free, 29MB/47MB, paused 16us total 120.449ms
+10-03 14:38:07.161  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 586(59KB) AllocSpace objects, 11(18MB) LOS objects, 36% free, 31MB/50MB, paused 14us total 140.977ms
+10-03 14:38:13.252  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10998(306KB) AllocSpace objects, 14(32MB) LOS objects, 42% free, 32MB/56MB, paused 30us total 280.506ms
+10-03 14:38:23.205  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5985(182KB) AllocSpace objects, 19(41MB) LOS objects, 50% free, 16MB/33MB, paused 16us total 333.190ms
+10-03 14:38:28.725  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5767(184KB) AllocSpace objects, 9(21MB) LOS objects, 50% free, 18MB/37MB, paused 32us total 174.398ms
+10-03 14:38:33.432  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 612(75KB) AllocSpace objects, 13(14MB) LOS objects, 32% free, 25MB/37MB, paused 13us total 164.652ms
+10-03 14:38:36.070  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10902(282KB) AllocSpace objects, 17(24MB) LOS objects, 50% free, 16MB/33MB, paused 16us total 210.010ms
+10-03 14:38:41.888  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5447(156KB) AllocSpace objects, 14(23MB) LOS objects, 49% free, 17MB/34MB, paused 29us total 138.701ms
+10-03 14:38:47.191  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5715(166KB) AllocSpace objects, 12(23MB) LOS objects, 50% free, 16MB/33MB, paused 37us total 267.549ms
+10-03 14:38:49.838  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 338(45KB) AllocSpace objects, 5(9828KB) LOS objects, 28% free, 23MB/33MB, paused 12us total 129.255ms
+10-03 14:38:53.075  4000  4021 I krd.bgremover: Waiting for a blocking GC ProfileSaver
+10-03 14:38:53.378  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10698(274KB) AllocSpace objects, 11(23MB) LOS objects, 49% free, 16MB/33MB, paused 37us total 328.640ms
+10-03 14:38:53.448  4000  4021 I krd.bgremover: WaitForGcToComplete blocked ProfileSaver on HeapTrim for 373.348ms
+10-03 14:38:55.811  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 337(45KB) AllocSpace objects, 5(9828KB) LOS objects, 28% free, 23MB/33MB, paused 29us total 106.179ms
+10-03 14:38:58.585  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5524(195KB) AllocSpace objects, 10(23MB) LOS objects, 49% free, 16MB/33MB, paused 35us total 262.836ms
+10-03 14:39:01.687  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 347(61KB) AllocSpace objects, 5(9828KB) LOS objects, 28% free, 24MB/33MB, paused 13us total 104.717ms
+10-03 14:39:04.458  4000  4015 I krd.bgremover: Background concurrent copying GC freed 11226(308KB) AllocSpace objects, 16(23MB) LOS objects, 50% free, 16MB/33MB, paused 30us total 197.087ms
+10-03 14:39:07.642  4000  4015 I krd.bgremover: Background young concurrent copying GC freed 340(45KB) AllocSpace objects, 5(9828KB) LOS objects, 28% free, 23MB/33MB, paused 12us total 119.119ms
+10-03 14:39:10.705  4000  4015 I krd.bgremover: Background concurrent copying GC freed 10828(278KB) AllocSpace objects, 17(21MB) LOS objects, 49% free, 13MB/26MB, paused 36us total 215.776ms
+10-03 14:39:17.626  4000  4015 I krd.bgremover: Background concurrent copying GC freed 11044(304KB) AllocSpace objects, 14(14MB) LOS objects, 48% free, 25MB/49MB, paused 46us total 195.585ms
+10-03 14:39:34.941  4000  4015 I krd.bgremover: Background concurrent copying GC freed 5994(183KB) AllocSpace objects, 13(25MB) LOS objects, 46% free, 27MB/51MB, paused 17us total 203.227ms
+10-03 14:39:47.474  4000  4021 I krd.bgremover: Waiting for a blocking GC ProfileSaver
+10-03 14:39:47.506  4000  4021 I krd.bgremover: WaitForGcToComplete blocked ProfileSaver on HeapTrim for 32.661ms
+10-03 14:43:10.631  6095  6095 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-03 14:43:10.633  6095  6095 I AndroidRuntime: Using default boot image
+10-03 14:43:10.633  6095  6095 I AndroidRuntime: Leaving lock profiling enabled
+10-03 14:43:10.690  6095  6095 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-03 14:43:11.707  6095  6095 D AndroidRuntime: Shutting down VM
