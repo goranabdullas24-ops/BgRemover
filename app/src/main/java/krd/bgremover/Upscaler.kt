@@ -205,7 +205,7 @@ object Upscaler {
     }
 
     /** سنوورەکان بۆ ئەوەی بیرگەی مۆبایل پڕ نەبێت */
-    private const val MAX_IN_PIXELS = 4_200_000L
+    private const val MAX_IN_PIXELS = 3_000_000L
     private const val MAX_OUT_PIXELS = 26_000_000L
     private const val MAX_OUT_SIDE = 8192
 
@@ -218,21 +218,25 @@ object Upscaler {
         ctx: Context, src0: Bitmap, scale: Int, colorSrc0: Bitmap?, onStatus: (String) -> Unit
     ): Bitmap = lock.withLock {
         val file = ensureModel(ctx) { onStatus("داگرتنی مۆدێلی Upscale (تەنها یەک جار): $it%") }
+        // قەبارەی ئەنجام بەپێی وێنە ئەسڵییەکە (هەرگیز بچووکتر نابێتەوە)
+        val w0 = src0.width; val h0 = src0.height
+        var t = scale.toFloat()
+        t = min(t, MAX_OUT_SIDE.toFloat() / max(w0, h0))
+        t = min(t, sqrt(MAX_OUT_PIXELS.toFloat() / (w0.toLong() * h0)))
+        if (t <= 1.02f) throw IOException("ئەم وێنەیە پێشتر گەورەیە (${w0}×${h0})، پێویستی بە Upscale نییە")
+        val W = (w0 * t).roundToInt().coerceAtLeast(1); val H = (h0 * t).roundToInt().coerceAtLeast(1)
+        // بۆ خێرایی و بیرگە: شیکردنەوە لەسەر کۆپییەکی بچووکتر (مۆدێل ×4 دەکات، پاشان بۆ قەبارەی ئامانج)
         var src = src0
         var colorSrc = colorSrc0?.takeIf { it.width == src0.width && it.height == src0.height }
-        val px0 = src.width.toLong() * src.height
+        val px0 = w0.toLong() * h0
         if (px0 > MAX_IN_PIXELS) {
             val s = sqrt(MAX_IN_PIXELS.toFloat() / px0)
-            val nw = (src.width * s).roundToInt().coerceAtLeast(1); val nh = (src.height * s).roundToInt().coerceAtLeast(1)
-            src = Bitmap.createScaledBitmap(src, nw, nh, true)
+            val nw = (w0 * s).roundToInt().coerceAtLeast(1); val nh = (h0 * s).roundToInt().coerceAtLeast(1)
+            src = Bitmap.createScaledBitmap(src0, nw, nh, true)
             colorSrc = colorSrc?.let { Bitmap.createScaledBitmap(it, nw, nh, true) }
         }
         val w = src.width; val h = src.height
-        var f = scale.toFloat()
-        f = min(f, MAX_OUT_SIDE.toFloat() / max(w, h))
-        f = min(f, sqrt(MAX_OUT_PIXELS.toFloat() / (w.toLong() * h)))
-        f = max(f, 1f)
-        val W = (w * f).roundToInt().coerceAtLeast(1); val H = (h * f).roundToInt().coerceAtLeast(1)
+        val fx = W.toFloat() / w; val fy = H.toFloat() / h
         val sess = session(file)
         val out = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val rgbSrc = colorSrc ?: src
@@ -273,8 +277,9 @@ object Upscaler {
                     val b = (res[2 * on + i] * 255f + 0.5f).toInt().coerceIn(0, 255)
                     ai[yy * cw + xx] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
                 }
-                val X0 = (tx * f).roundToInt(); val Y0 = (ty * f).roundToInt()
-                val X1 = (tx1 * f).roundToInt(); val Y1 = (ty1 * f).roundToInt()
+                val X0 = (tx * fx).roundToInt(); val Y0 = (ty * fy).roundToInt()
+                val X1 = if (tx1 == w) W else (tx1 * fx).roundToInt()
+                val Y1 = if (ty1 == h) H else (ty1 * fy).roundToInt()
                 val dw = X1 - X0; val dh = Y1 - Y0
                 if (dw <= 0 || dh <= 0) { done++; continue }
                 var aiBmp = Bitmap.createBitmap(ai, cw, ch, Bitmap.Config.ARGB_8888)

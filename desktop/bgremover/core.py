@@ -39,7 +39,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "1.5"
+VERSION = "1.6"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 
@@ -790,17 +790,18 @@ def upscale_image(img: Image.Image, scale: int = 2, progress: ProgressFn = _noop
         rgb = rgba.convert("RGB")
     else:
         rgb = img.convert("RGB")
-    # سنووری بیرگە
-    if rgb.width * rgb.height > UPSCALE_MAX_INPUT:
-        sc = (UPSCALE_MAX_INPUT / (rgb.width * rgb.height)) ** 0.5
-        rgb = rgb.resize((max(1, round(rgb.width * sc)), max(1, round(rgb.height * sc))), Image.LANCZOS)
-        if rgba is not None:
-            rgba = rgba.resize(rgb.size, Image.LANCZOS)
+    # قەبارەی ئەنجام بەپێی وێنە ئەسڵییەکە (هەرگیز بچووکتر نابێتەوە)
+    w0, h0 = rgb.size
+    t = min(float(scale), UPSCALE_MAX_SIDE / max(w0, h0), (UPSCALE_MAX_PIXELS / (w0 * h0)) ** 0.5)
+    if t <= 1.02:
+        raise ValueError(f"ئەم وێنەیە پێشتر گەورەیە ({w0}×{h0})، پێویستی بە Upscale نییە")
+    W, H = max(1, round(w0 * t)), max(1, round(h0 * t))
+    # بۆ بیرگە/خێرایی: شیکردنەوە لەسەر کۆپییەکی بچووکتر ئەگەر پێویست بێت
+    if w0 * h0 > UPSCALE_MAX_INPUT:
+        sc = (UPSCALE_MAX_INPUT / (w0 * h0)) ** 0.5
+        rgb = rgb.resize((max(1, round(w0 * sc)), max(1, round(h0 * sc))), Image.LANCZOS)
     w, h = rgb.size
-    f = float(scale)
-    f = min(f, UPSCALE_MAX_SIDE / max(w, h), (UPSCALE_MAX_PIXELS / (w * h)) ** 0.5)
-    f = max(f, 1.0)
-    W, H = max(1, round(w * f)), max(1, round(h * f))
+    fx, fy = W / w, H / h
     with _locks["esrgan"]:
         s = _session_for("esrgan", progress)
         name = s.get_inputs()[0].name
@@ -817,8 +818,9 @@ def upscale_image(img: Image.Image, scale: int = 2, progress: ProgressFn = _noop
             cx0, cy0 = (tx - x0) * 4, (ty - y0) * 4
             ai = np.clip(r[cy0:cy0 + (ty1 - ty) * 4, cx0:cx0 + (tx1 - tx) * 4], 0, 1)
             # شوێنی ئەم پارچەیە لە وێنەی کۆتاییدا
-            X0, Y0 = round(tx * f), round(ty * f)
-            X1, Y1 = round(tx1 * f), round(ty1 * f)
+            X0, Y0 = round(tx * fx), round(ty * fy)
+            X1 = W if tx1 == w else round(tx1 * fx)
+            Y1 = H if ty1 == h else round(ty1 * fy)
             if X1 <= X0 or Y1 <= Y0:
                 continue
             ai_img = Image.fromarray((ai * 255 + 0.5).astype(np.uint8))
@@ -830,7 +832,7 @@ def upscale_image(img: Image.Image, scale: int = 2, progress: ProgressFn = _noop
     progress("Upscale: تەواوکردن...")
     res = Image.fromarray(out)
     if rgba is not None:
-        res.putalpha(rgba.split()[-1].resize((W, H), Image.LANCZOS))
+        res.putalpha(rgba.split()[-1].resize((W, H), Image.LANCZOS))   # ڕوونی لە وێنە ئەسڵییەکەوە
     return res
 
 
