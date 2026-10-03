@@ -89,8 +89,59 @@ jobs:
           "exit code: $($p.ExitCode)"
           if ($p.ExitCode -ne 0) { exit 1 }
 
-      - name: Zip for download (browsers often block bare .exe)
-        run: Compress-Archive -Path dist\BgRemover.exe -DestinationPath dist\BgRemover-Desktop.zip -CompressionLevel Optimal
+      - name: Build installer (Setup)
+        timeout-minutes: 20
+        run: |
+          $ver = (Select-String -Path bgremover\core.py -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
+          "APP_VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append
+          pyinstaller --noconfirm --onedir --windowed --name BgRemover --icon icon.ico --distpath dist\onedir --workpath build\onedir `
+            --collect-data onnxruntime --collect-binaries onnxruntime `
+            --hidden-import pillow_heif --hidden-import pillow_avif --hidden-import scipy._cyutility --collect-submodules scipy.ndimage --collect-submodules scipy._lib `
+            --exclude-module tkinter --exclude-module matplotlib `
+            main.py | Out-Null
+          if (-not (Get-Command iscc -ErrorAction SilentlyContinue)) { choco install innosetup -y --no-progress | Out-Null }
+          $env:APP_VERSION = $ver
+          $iscc = (Get-Command iscc -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" }
+          & $iscc setup.iss
+          dir dist
+
+      - name: Test installer (silent install + run installed app)
+        timeout-minutes: 8
+        run: |
+          $setup = Get-ChildItem dist\BgRemover-Setup-*.exe | Select-Object -First 1
+          $p = Start-Process -FilePath $setup.FullName -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/CURRENTUSER","/NORESTART" -Wait -PassThru
+          "setup exit: $($p.ExitCode)"
+          $exe = Join-Path $env:LOCALAPPDATA "Programs\BgRemover\BgRemover.exe"
+          if (-not (Test-Path $exe)) { "::warning title=setup::installed exe not found"; exit 1 }
+          Remove-Item selftest.log -ErrorAction SilentlyContinue
+          $out = Join-Path (Get-Location) "setup_out.png"
+          $q = Start-Process -FilePath $exe -ArgumentList "--selftest","test.jpg",$out -PassThru
+          if (-not $q.WaitForExit(300000)) { Stop-Process -Id $q.Id -Force }
+          if (Test-Path selftest.log) { Get-Content selftest.log | ForEach-Object { "::warning title=setup-selftest::$_" } }
+          if (-not (Select-String -Path selftest.log -Pattern "SELFTEST OK")) { exit 1 }
+
+      - name: Package full desktop zip (source + portable exe + setup)
+        run: |
+          $ver = $env:APP_VERSION
+          $root = "pkg\BgRemover-Desktop-v$ver"
+          New-Item -ItemType Directory -Force -Path "$root\source" | Out-Null
+          Copy-Item dist\BgRemover.exe "$root\BgRemover.exe"
+          Copy-Item (Get-ChildItem dist\BgRemover-Setup-*.exe).FullName "$root\"
+          Copy-Item -Recurse bgremover,main.py,requirements.txt,make_icon.py,setup.iss "$root\source\"
+          Get-ChildItem -Recurse "$root\source" -Include __pycache__ | Remove-Item -Recurse -Force
+          @"
+          BgRemover Desktop v$ver
+          =======================
+          BgRemover-Setup-$ver.exe  : install on this computer (desktop + Start menu shortcuts, uninstaller)
+          BgRemover.exe             : portable version, runs without installing
+          source\                   : full Python source code
+
+          Code + Android app: https://github.com/goranabdullas24-ops/BgRemover
+          "@ | Out-File -Encoding utf8 "$root\README.txt"
+          Compress-Archive -Path $root -DestinationPath "dist\BgRemover-Desktop-v$ver.zip" -CompressionLevel Optimal
+          Compress-Archive -Path dist\BgRemover.exe -DestinationPath dist\BgRemover-Desktop.zip -CompressionLevel Optimal
+          dir dist
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -100,3 +151,5 @@ jobs:
           files: |
             desktop/dist/BgRemover.exe
             desktop/dist/BgRemover-Desktop.zip
+            desktop/dist/BgRemover-Setup-*.exe
+            desktop/dist/BgRemover-Desktop-v*.zip
