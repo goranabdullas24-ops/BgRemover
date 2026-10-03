@@ -246,6 +246,7 @@ class Tile(DragSource, QFrame):
     clicked = Signal(object, bool)   # result, ctrl
     remove = Signal(object)
     download = Signal(object)
+    upscale = Signal(object)
     context = Signal(object, QPoint)
 
     SIZE = 140
@@ -282,6 +283,12 @@ class Tile(DragSource, QFrame):
         self.b_dl.setToolTip("داگرتن بەبێ لابردنی باکگراوند")
         self.b_dl.setFixedSize(30, 30)
         self.b_dl.clicked.connect(lambda: self.download.emit(self.r))
+        self.b_up = QToolButton(self)
+        self.b_up.setObjectName("tileBtn")
+        self.b_up.setText("2×")
+        self.b_up.setToolTip("Upscale ×2 بە AI")
+        self.b_up.setFixedSize(30, 30)
+        self.b_up.clicked.connect(lambda: self.upscale.emit(self.r))
         self.check = QLabel(self)
         self.check.setFixedSize(26, 26)
         self.check.setAlignment(Qt.AlignCenter)
@@ -292,6 +299,7 @@ class Tile(DragSource, QFrame):
         # لە ڕاست بۆ چەپ دوگمەکان لە گۆشەی سەرەوەی چەپ دادەنرێن (وەک ئەندرۆید: TopEnd)
         self.b_rm.move(5, 5)
         self.b_dl.move(5, 40)
+        self.b_up.move(5, 75)
         self.check.move(self.SIZE - 31, 5)
 
     def set_pixmap(self, pm: QPixmap):
@@ -305,6 +313,7 @@ class Tile(DragSource, QFrame):
     def update_sel(self):
         self.b_rm.setVisible(not self.select_mode)
         self.b_dl.setVisible(not self.select_mode)
+        self.b_up.setVisible(not self.select_mode)
         self.check.setVisible(self.select_mode)
         self.check.setText("✓" if self.sel else "")
         self.check.setStyleSheet(
@@ -666,6 +675,7 @@ class MainWindow(QMainWindow):
         ov.addWidget(self.low_lbl)
         orow = QHBoxLayout()
         orow.addWidget(btn("⬇  داگرتنی ئەسڵی (بێ لابردن)", cb=self.save_original))
+        orow.addWidget(btn("2×  Upscale", cb=lambda: self.upscale_from("original", 2)))
         self.b_redo = btn("↻  دووبارە", cb=self.remove_background)
         orow.addWidget(self.b_redo)
         ov.addLayout(orow)
@@ -681,7 +691,7 @@ class MainWindow(QMainWindow):
         crow.addLayout(self.chips_box)
         crow.addStretch(1)
         resv.addLayout(crow)
-        self.b_up = btn("✨  Upscale ×٤ بە AI", cb=self.upscale_now)
+        self.b_up = btn("Upscale ×2 بە AI", cb=lambda: self.upscale_from("cutout", 2))
         resv.addWidget(self.b_up)
         rrow = QHBoxLayout()
         rrow.addWidget(btn("💾  پاشەکەوت", True, self.save_result))
@@ -696,6 +706,44 @@ class MainWindow(QMainWindow):
         self.work_v.addWidget(self.pair_w)
         self.orig_card.hide()
         self.res_card.hide()
+
+        # ── بەشی Upscale (جیا) ──
+        self.up_card, uv, self.up_title = card("2×  Upscale — گەورەکردن بە AI")
+        urow = QHBoxLayout()
+        self.up_before = Checker(200)
+        self.up_after = Checker(200)
+        self.up_after.path_provider = self._drag_upscaled_path
+        for lbl, view in (("پێش", self.up_before), ("دوای Upscale", self.up_after)):
+            col = QVBoxLayout()
+            t = QLabel(lbl)
+            t.setAlignment(Qt.AlignCenter)
+            t.setStyleSheet("color:#555;")
+            col.addWidget(t)
+            col.addWidget(view, 1)
+            urow.addLayout(col, 1)
+        uv.addLayout(urow, 1)
+        self.up_info = QLabel("")
+        self.up_info.setWordWrap(True)
+        self.up_info.setStyleSheet("color:#555;")
+        uv.addWidget(self.up_info)
+        ubtn = QHBoxLayout()
+        self.b_up2 = btn("2×  Upscale ×2", True, lambda: self.run_upscale(2))
+        self.b_up4 = btn("4×  Upscale ×4", cb=lambda: self.run_upscale(4))
+        ubtn.addWidget(self.b_up2)
+        ubtn.addWidget(self.b_up4)
+        ubtn.addWidget(btn("🖼  وێنەیەکی تر...", cb=self.open_for_upscale))
+        ubtn.addStretch(1)
+        self.b_up_save = btn("💾  پاشەکەوت", True, self.save_upscaled)
+        self.b_up_copy = btn("📋  کۆپی", cb=self.copy_upscaled)
+        ubtn.addWidget(self.b_up_save)
+        ubtn.addWidget(self.b_up_copy)
+        ubtn.addWidget(btn("✕", cb=self.close_upscale))
+        uv.addLayout(ubtn)
+        self.work_v.addWidget(self.up_card)
+        self.up_card.hide()
+        self.up_src: Optional[Image.Image] = None
+        self.up_res: Optional[Image.Image] = None
+        self.up_name = "image"
 
         self.hint = QLabel("ناوێک بنووسە و بگەڕێ، یان وێنەیەک بکەرەوە، ڕایبکێشە ناو پەنجەرەکە (Drag & Drop)، یان Ctrl+V.\n\n"
                            "✨ = لابردنی باکگراوند   ⬇ = داگرتن بە قەبارەی ئەسڵی   Ctrl+کلیک = هەڵبژاردنی چەند وێنەیەک\n"
@@ -766,7 +814,7 @@ class MainWindow(QMainWindow):
         self.prog.setVisible(self.busy)
         self.prog_lbl.setVisible(self.busy)
         self.prog_lbl.setText(text or "")
-        for b in (self.b_search, self.b_redo, self.b_up):
+        for b in (self.b_search, self.b_redo, self.b_up, self.b_up2, self.b_up4):
             b.setEnabled(not self.busy)
 
     def run(self, fn, on_done, *args, on_error=None, label="..."):
@@ -844,6 +892,7 @@ class MainWindow(QMainWindow):
         t.clicked.connect(self._tile_clicked)
         t.remove.connect(lambda rr: self.pick(rr))
         t.download.connect(self.download_one)
+        t.upscale.connect(self.upscale_tile)
         t.context.connect(self._tile_menu)
         self.grid.add(t)
         if r.thumb_url in self.thumb_cache:
@@ -880,6 +929,7 @@ class MainWindow(QMainWindow):
         m.setLayoutDirection(Qt.RightToLeft)
         m.addAction("✨  لابردنی باکگراوند", lambda: self.pick(r))
         m.addAction("⬇  داگرتن بەبێ لابردنی باکگراوند", lambda: self.download_one(r))
+        m.addAction("2×  Upscale ×2 بە AI", lambda: self.upscale_tile(r))
         m.addAction("☑  هەڵبژاردن", lambda: (self.set_select_mode(True), self.toggle_select(r)))
         if r.page_url:
             m.addAction("🌐  کردنەوەی پەڕەی سەرچاوە", lambda: webbrowser.open(r.page_url))
@@ -965,7 +1015,7 @@ class MainWindow(QMainWindow):
         has_o, has_c = self.original is not None, self.cutout is not None
         self.orig_card.setVisible(has_o)
         self.res_card.setVisible(has_c or has_o)
-        self.hint.setVisible(not (has_o or has_c or self.batch))
+        self.hint.setVisible(not (has_o or has_c or self.batch or self.up_src is not None))
         if has_o:
             self.orig_title.setText(f"وێنەی سەرەکی — {self.original.width}×{self.original.height} پیکسڵ")
             self.orig_view.set_image(pil_to_qimage(thumb(self.original, 1400)))
@@ -979,20 +1029,21 @@ class MainWindow(QMainWindow):
             self.res_view.set_image(None)
         self.res_view.bg = self.bg
         self.res_view.update()
-        self.b_up.setVisible(has_c and not self.upscaled and max(self.cutout.size) < 2048 if has_c else False)
+        self.b_up.setVisible(has_c)
         self.work_scroll.verticalScrollBar().setValue(0)
         self._fit_split()
 
     def _fit_split(self):
         """کاتێک وێنەیەک یان بەکۆمەڵ هەیە بەشی سەرەوە گەورە دەبێت؛ ئەگەرنا بچووک."""
         total = max(400, self.split.height())
+        has_up = getattr(self, "up_src", None) is not None
         busy_top = (self.original is not None or self.cutout is not None or bool(self.batch)
-                    or self.sel_bar.isVisible())
+                    or self.sel_bar.isVisible() or has_up)
         if busy_top:
-            want = int(total * 0.6) if (self.original is not None or self.batch) else 90
+            want = int(total * 0.62) if (self.original is not None or self.batch or has_up) else 90
         else:
             want = 150 if self.results else int(total * 0.5)
-        key = (busy_top, self.original is not None, bool(self.batch), bool(self.results), total)
+        key = (busy_top, self.original is not None, bool(self.batch), bool(self.results), has_up, total)
         if getattr(self, "_split_key", None) != key:
             self._split_key = key
             self.split.setSizes([want, total - want])
@@ -1018,21 +1069,132 @@ class MainWindow(QMainWindow):
                 self.message(note)
         self.run(work, done, label=f"٢/٢ لابردنی باکگراوند ({src.width}×{src.height})...")
 
-    def upscale_now(self):
-        if self.cutout is None or self.busy:
+    # ───── Upscale (بەشی جیا) ─────
+    def _set_up_source(self, im: Image.Image, name: str):
+        self.up_src, self.up_res, self.up_name = im, None, core.safe_filename(name)
+        self.up_before.bg = None
+        self.up_before.checker = im.mode == "RGBA"
+        self.up_before.set_image(pil_to_qimage(thumb(im, 1000)))
+        self.up_after.set_image(None)
+        self.up_info.setText(f"وێنە: {im.width}×{im.height} پیکسڵ — دوگمەی 2× یان 4× دابگرە")
+        self._refresh_up_ui()
+        self.hint.hide()
+        self.up_card.show()
+        self._split_key = None
+        self._fit_split()
+        QTimer.singleShot(50, lambda: self.work_scroll.ensureWidgetVisible(self.up_card))
+
+    def _refresh_up_ui(self):
+        has = self.up_res is not None
+        self.b_up_save.setEnabled(has)
+        self.b_up_copy.setEnabled(has)
+
+    def upscale_from(self, what: str, scale: int):
+        if self.busy:
             return
-        orig, cut = self.original, self.cutout
+        if what == "cutout" and self.cutout is not None:
+            self._set_up_source(self.final_image(self.cutout), f"{self.orig_name}_nobg")
+        elif what == "original" and self.original is not None:
+            self._set_up_source(self.original, self.orig_name)
+        else:
+            return
+        self.run_upscale(scale)
+
+    def upscale_tile(self, r: core.ImageResult):
+        if self.busy:
+            return
 
         def work(progress):
-            return core.upscale_cutout(orig, cut, progress)
+            progress("داگرتنی وێنەکە بە قەبارەی تەواو...")
+            b, _ = core.fetch_image_bytes(r.full_url, r.thumb_url, r.page_url)
+            return b
+
+        def done(b):
+            name = Path(urllib_unquote(r.full_url.split("?")[0])).stem or r.title or "image"
+            im = Image.open(io.BytesIO(b))
+            from PIL import ImageOps
+            im = ImageOps.exif_transpose(im)
+            im = im.convert("RGBA") if im.mode in ("RGBA", "LA", "P") and ("A" in im.getbands() or "transparency" in im.info) else im.convert("RGB")
+            self._set_up_source(im, name)
+            self.run_upscale(2)
+        self.run(work, done, label="داگرتنی وێنەکە بۆ Upscale...",
+                 on_error=lambda e: self.message(f"ئەم وێنەیە دانابەزێت ({e})", 10000))
+
+    def open_for_upscale(self):
+        f, _ = QFileDialog.getOpenFileName(self, "وێنەیەک بۆ Upscale", str(self.save_dir()),
+                                           "وێنە (*.png *.jpg *.jpeg *.webp *.bmp *.gif *.tif *.tiff *.avif *.heic)")
+        if not f:
+            return
+        try:
+            from PIL import ImageOps
+            im = ImageOps.exif_transpose(Image.open(f))
+            im = im.convert("RGBA") if ("A" in im.getbands() or "transparency" in im.info) else im.convert("RGB")
+        except Exception as e:  # noqa: BLE001
+            self.message(f"نەتوانرا وێنەکە بکرێتەوە: {e}")
+            return
+        self._set_up_source(im, Path(f).stem)
+
+    def run_upscale(self, scale: int):
+        if self.up_src is None or self.busy:
+            return
+        src = self.up_src
+
+        def work(progress):
+            return core.upscale_image(src, scale, progress)
 
         def done(up):
-            old = self.cutout.size
-            self.cutout = up
-            self.upscaled = True
-            self._show_work()
-            self.message(f"Upscale کرا: {old[0]}×{old[1]} → {up.width}×{up.height}")
-        self.run(work, done, label="Upscale ×4 بە AI...")
+            self.up_res = up
+            self.up_scale = scale
+            self.up_after.checker = up.mode == "RGBA"
+            self.up_after.set_image(pil_to_qimage(thumb(up, 1400)))
+            self.up_info.setText(f"✔ Upscale ×{scale}: {src.width}×{src.height} → {up.width}×{up.height} پیکسڵ — "
+                                 "پاشەکەوتی بکە یان ڕایبکێشە ناو هەر بەرنامەیەک")
+            self._refresh_up_ui()
+            self.message(f"Upscale کرا: {src.width}×{src.height} → {up.width}×{up.height}", 10000)
+        self.run(work, done, label=f"Upscale ×{scale} بە AI...",
+                 on_error=lambda e: self.message(f"Upscale سەرنەکەوت: {e}", 12000))
+
+    def _upscaled_name(self) -> str:
+        return f"{self.up_name}_x{getattr(self, 'up_scale', 2)}"
+
+    def save_upscaled(self):
+        if self.up_res is None:
+            return
+        default = self.save_dir() / f"{self._upscaled_name()}.png"
+        path, _ = QFileDialog.getSaveFileName(self, "پاشەکەوتکردن", str(default), "PNG (*.png);;JPEG (*.jpg)")
+        if not path:
+            return
+        try:
+            if Path(path).suffix.lower() in (".jpg", ".jpeg"):
+                core.with_background(self.up_res, (255, 255, 255)).convert("RGB").save(path, quality=98, subsampling=0) \
+                    if self.up_res.mode == "RGBA" else self.up_res.save(path, quality=98, subsampling=0)
+            else:
+                if Path(path).suffix.lower() != ".png":
+                    path += ".png"
+                self.up_res.save(path)
+        except Exception as e:  # noqa: BLE001
+            self.message(f"پاشەکەوت سەرنەکەوت: {e}", 10000)
+            return
+        self.message(f"✔ پاشەکەوت کرا: {path}", 12000)
+
+    def copy_upscaled(self):
+        if self.up_res is not None:
+            QGuiApplication.clipboard().setImage(pil_to_qimage(self.up_res))
+            self.message("کۆپی کرا")
+
+    def _drag_upscaled_path(self) -> Optional[Path]:
+        if self.up_res is None:
+            return None
+        p = drag_dir() / f"{self._upscaled_name()}.png"
+        if getattr(self, "_up_drag_key", None) != id(self.up_res) or not p.exists():
+            self.up_res.save(p)
+            self._up_drag_key = id(self.up_res)
+        return p
+
+    def close_upscale(self):
+        self.up_src = self.up_res = None
+        self.up_card.hide()
+        self._show_work()
 
     def _build_chips(self):
         while self.chips_box.count():

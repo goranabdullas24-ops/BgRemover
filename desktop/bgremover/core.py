@@ -39,7 +39,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "1.4"
+VERSION = "1.5"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 
@@ -770,6 +770,68 @@ def upscale_cutout(original: Optional[Image.Image], cutout: Image.Image, progres
     alpha = np.asarray(cutout.split()[-1], np.float32) / 255.0
     progress("Upscale: جێبەجێکردنی ڕوونی...")
     return apply_alpha(up, alpha)
+
+
+UPSCALE_MAX_SIDE = 12000
+UPSCALE_MAX_PIXELS = 64_000_000
+UPSCALE_MAX_INPUT = 9_000_000
+
+
+def upscale_image(img: Image.Image, scale: int = 2, progress: ProgressFn = _noop) -> Image.Image:
+    """
+    Upscale ×2 یان ×4 بە AI (Real-ESRGAN) بۆ هەر وێنەیەک — RGB یان RGBA (ڕوونی دەپارێزرێت).
+    مۆدێلەکە ×4 کار دەکات؛ بۆ ×2 هەر پارچەیەک ڕاستەوخۆ بە LANCZOS بچووک دەکرێتەوە
+    (وردەکاری زیاتر لە ×2 ی ئاسایی، بێ بەکارهێنانی بیرگەی زۆر).
+    """
+    has_alpha = img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info)
+    rgba = img.convert("RGBA") if has_alpha else None
+    if rgba is not None:
+        # ڕەنگی پیکسڵە ڕوونەکان لە دەوروبەرەوە پڕ دەکرێتەوە بۆ ئەوەی لێوار ڕەش/سپی نەبێت
+        rgb = rgba.convert("RGB")
+    else:
+        rgb = img.convert("RGB")
+    # سنووری بیرگە
+    if rgb.width * rgb.height > UPSCALE_MAX_INPUT:
+        sc = (UPSCALE_MAX_INPUT / (rgb.width * rgb.height)) ** 0.5
+        rgb = rgb.resize((max(1, round(rgb.width * sc)), max(1, round(rgb.height * sc))), Image.LANCZOS)
+        if rgba is not None:
+            rgba = rgba.resize(rgb.size, Image.LANCZOS)
+    w, h = rgb.size
+    f = float(scale)
+    f = min(f, UPSCALE_MAX_SIDE / max(w, h), (UPSCALE_MAX_PIXELS / (w * h)) ** 0.5)
+    f = max(f, 1.0)
+    W, H = max(1, round(w * f)), max(1, round(h * f))
+    with _locks["esrgan"]:
+        s = _session_for("esrgan", progress)
+        name = s.get_inputs()[0].name
+        a = np.asarray(rgb, dtype=np.float32) / 255.0
+        out = np.zeros((H, W, 3), np.uint8)
+        tile, pad = 160, 12
+        tiles = [(ty, tx) for ty in range(0, h, tile) for tx in range(0, w, tile)]
+        for k, (ty, tx) in enumerate(tiles):
+            progress(f"Upscale ×{scale} بە AI: {k * 100 // len(tiles)}%")
+            x0, y0 = max(0, tx - pad), max(0, ty - pad)
+            x1, y1 = min(w, tx + tile + pad), min(h, ty + tile + pad)
+            r = s.run(None, {name: a[y0:y1, x0:x1].transpose(2, 0, 1)[None]})[0][0].transpose(1, 2, 0)
+            tx1, ty1 = min(tx + tile, w), min(ty + tile, h)
+            cx0, cy0 = (tx - x0) * 4, (ty - y0) * 4
+            ai = np.clip(r[cy0:cy0 + (ty1 - ty) * 4, cx0:cx0 + (tx1 - tx) * 4], 0, 1)
+            # شوێنی ئەم پارچەیە لە وێنەی کۆتاییدا
+            X0, Y0 = round(tx * f), round(ty * f)
+            X1, Y1 = round(tx1 * f), round(ty1 * f)
+            if X1 <= X0 or Y1 <= Y0:
+                continue
+            ai_img = Image.fromarray((ai * 255 + 0.5).astype(np.uint8))
+            if ai_img.size != (X1 - X0, Y1 - Y0):
+                ai_img = ai_img.resize((X1 - X0, Y1 - Y0), Image.LANCZOS)
+            base = rgb.crop((tx, ty, tx1, ty1)).resize((X1 - X0, Y1 - Y0), Image.BICUBIC)
+            mix = AI_WEIGHT * np.asarray(ai_img, np.float32) + (1 - AI_WEIGHT) * np.asarray(base, np.float32)
+            out[Y0:Y1, X0:X1] = np.clip(mix + 0.5, 0, 255).astype(np.uint8)
+    progress("Upscale: تەواوکردن...")
+    res = Image.fromarray(out)
+    if rgba is not None:
+        res.putalpha(rgba.split()[-1].resize((W, H), Image.LANCZOS))
+    return res
 
 
 # ───────────────────────── ڕێکخستن ─────────────────────────
