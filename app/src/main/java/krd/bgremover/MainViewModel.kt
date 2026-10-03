@@ -244,25 +244,33 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var originalUrl: String? = null
     private var originalFallback: String? = null
 
+    /** ئەنجامی داگرتن: null = سەرکەوتوو؛ ئەگەرنا هۆکاری هەڵە. */
+    private var lastRawLow = false
+
     /** داگرتنی فایلێک بەبێ لابردنی باکگراوند (ئەسڵی، کوالیتی تەواو). */
-    private suspend fun saveRaw(url: String, fallback: String?): Boolean {
+    private suspend fun saveRaw(url: String, fallback: String?): String? {
         val app = getApplication<Application>()
         val ref = Uri.parse(url).let { "${it.scheme}://${it.host}/" }
         val tries = listOf<suspend () -> Pair<ByteArray, String>>(
             { ImageUtils.downloadRaw(url) },
             { ImageUtils.downloadRaw(url, ref, ImageUtils.DESKTOP_UA) },
             { ImageUtils.downloadRaw(ImageUtils.proxied(url)) },
-            { if (fallback != null && fallback != url) ImageUtils.downloadRaw(fallback) else throw Exception() }
+            { ImageUtils.downloadRaw(ImageUtils.proxied(url) + "&output=jpg") },
         )
         var got: Pair<ByteArray, String>? = null
+        var err: String? = null
+        lastRawLow = false
         for (t in tries) {
-            try { got = t(); break } catch (e: CancellationException) { throw e } catch (_: Exception) {}
+            try { got = t(); break } catch (e: CancellationException) { throw e } catch (e: Exception) { err = e.message }
         }
-        val (bytes, mime) = got ?: return false
+        if (got == null && fallback != null && fallback != url) {
+            try { got = ImageUtils.downloadRaw(fallback); lastRawLow = true } catch (e: CancellationException) { throw e } catch (e: Exception) { err = e.message }
+        }
+        val (bytes, mime) = got ?: return err ?: "هەڵەی تۆڕ"
         return try {
             withContext(Dispatchers.IO) { ImageUtils.saveBytesToGallery(app, bytes, mime) }
-            true
-        } catch (_: Exception) { false }
+            null
+        } catch (e: Exception) { "پاشەکەوت سەرنەکەوت: ${e.message}" }
     }
 
     /** وێنەی سەرەکی (پێش لابردن) پاشەکەوت دەکات. */
@@ -270,7 +278,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             busy = "داگرتنی وێنەی ئەسڵی..."
             val url = originalUrl
-            val ok = if (url != null) saveRaw(url, originalFallback) else {
+            val ok = if (url != null) saveRaw(url, originalFallback) == null else {
                 val bmp = original
                 if (bmp == null) false else try {
                     withContext(Dispatchers.IO) {
@@ -295,8 +303,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (r.fullUrl in downloading) return
         downloading = downloading + r.fullUrl
         viewModelScope.launch {
-            val ok = try { saveRaw(r.fullUrl, r.thumbUrl) } finally { downloading = downloading - r.fullUrl }
-            message = if (ok) "دابەزی › Pictures/BgRemover/Original" else "ئەم وێنەیە دانابەزێت"
+            val err = try { saveRaw(r.fullUrl, r.thumbUrl) } finally { downloading = downloading - r.fullUrl }
+            message = if (err == null) "✔ دابەزی › گاڵەری › Pictures/BgRemover/Original" +
+                (if (lastRawLow) " (ماڵپەڕەکە تەنها وێنەی بچووکی دا)" else "")
+            else "ئەم وێنەیە دانابەزێت ($err)"
         }
     }
 
@@ -312,7 +322,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             var ok = 0
             picked.forEachIndexed { i, r ->
                 busy = "داگرتنی وێنەی ${i + 1} لە ${picked.size}..."
-                if (saveRaw(r.fullUrl, r.thumbUrl)) ok++
+                if (saveRaw(r.fullUrl, r.thumbUrl) == null) ok++
             }
             busy = null
             message = "$ok لە ${picked.size} وێنە دابەزی › Pictures/BgRemover/Original"

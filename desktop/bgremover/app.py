@@ -437,6 +437,9 @@ class MainWindow(QMainWindow):
         self.batch_stop = False
         self.next_id = 1
         self.downloading: set[str] = set()
+        self.dl_pool = ThreadPoolExecutor(3)
+        self.dl_count = 0
+        self.dl_shown_folder = False
 
         self._tasks: set = set()
         self._bridge = Signals()
@@ -836,7 +839,7 @@ class MainWindow(QMainWindow):
                  on_error=lambda e: self.message("ئەم وێنەیە دانابەزێت، یەکێکی تر هەڵبژێرە"))
 
     def set_image(self, im: Image.Image, raw: Optional[bytes], name: str, low=False):
-        self.original, self.orig_bytes, self.orig_name = im, raw, name[:60]
+        self.original, self.orig_bytes, self.orig_name = im, raw, core.safe_filename(name)
         self.low_quality = low
         self.cutout = None
         self.upscaled = False
@@ -949,15 +952,19 @@ class MainWindow(QMainWindow):
             return
         img = self.final_image(self.cutout)
         ext = Path(path).suffix.lower()
-        if ext in (".jpg", ".jpeg"):
-            core.with_background(self.cutout, self.bg or (255, 255, 255)).save(path, quality=100, subsampling=0)
-        elif ext == ".webp":
-            img.save(path, lossless=True)
-        else:
-            if not ext:
-                path += ".png"
-            img.save(path)
-        self.message(f"پاشەکەوت کرا: {path}")
+        try:
+            if ext in (".jpg", ".jpeg"):
+                core.with_background(self.cutout, self.bg or (255, 255, 255)).convert("RGB").save(path, quality=100, subsampling=0)
+            elif ext == ".webp":
+                img.save(path, lossless=True)
+            else:
+                if ext != ".png":
+                    path += ".png"
+                img.save(path)
+        except Exception as e:  # noqa: BLE001
+            self.message(f"پاشەکەوت سەرنەکەوت: {e}", 10000)
+            return
+        self.message(f"✔ پاشەکەوت کرا: {path}", 12000)
 
     def copy_result(self):
         if self.cutout is not None:
@@ -972,13 +979,17 @@ class MainWindow(QMainWindow):
             return
         d = self.save_dir() / "Original"
         d.mkdir(exist_ok=True)
-        if self.orig_bytes and core.sniff_ext(self.orig_bytes):
-            p = unique(d / f"{self.orig_name}.{core.sniff_ext(self.orig_bytes)}")
-            p.write_bytes(self.orig_bytes)
-        else:
-            p = unique(d / f"{self.orig_name}.png")
-            self.original.save(p)
-        self.message(f"پاشەکەوت کرا: {p}")
+        try:
+            if self.orig_bytes and core.sniff_ext(self.orig_bytes):
+                p = core.save_downloaded(self.orig_bytes, d, self.orig_name)
+            else:
+                p = unique(d / f"{core.safe_filename(self.orig_name)}.png")
+                self.original.save(p)
+        except Exception as e:  # noqa: BLE001
+            self.message(f"پاشەکەوت سەرنەکەوت: {e}", 10000)
+            return
+        self.message(f"✔ پاشەکەوت کرا: {p}", 12000)
+        reveal_in_folder(p)
 
     # ───── داگرتن بەبێ لابردن ─────
     def download_one(self, r: core.ImageResult):
@@ -990,25 +1001,32 @@ class MainWindow(QMainWindow):
 
         def job():
             try:
-                b, _ = core.fetch_image_bytes(r.full_url, r.thumb_url, r.page_url)
-                name = Path(urllib_unquote(r.full_url.split("?")[0])).stem or "image"
-                d.mkdir(parents=True, exist_ok=True)
-                p = unique(d / f"{name[:60]}.{core.sniff_ext(b) or 'jpg'}")
-                p.write_bytes(b)
-                self.dl_done.emit(r.full_url, True, str(p))
-            except Exception:  # noqa: BLE001
-                self.dl_done.emit(r.full_url, False, "")
-        self.thumb_pool.submit(job)
+                b, low = core.fetch_image_bytes(r.full_url, r.thumb_url, r.page_url)
+                name = Path(urllib_unquote(r.full_url.split("?")[0])).stem or r.title or "image"
+                p = core.save_downloaded(b, d, name)
+                self.dl_done.emit(r.full_url, True, str(p) + ("|low" if low else ""))
+            except Exception as e:  # noqa: BLE001
+                self.dl_done.emit(r.full_url, False, str(e))
+        self.dl_pool.submit(job)
 
     def _tile_loading(self, url, on):
         for t in self.grid.items:
             if t.r.full_url == url:
                 t.set_loading_dl(on)
 
-    def _on_dl_done(self, url, ok, path):
+    def _on_dl_done(self, url, ok, info):
         self.downloading.discard(url)
         self._tile_loading(url, False)
-        self.message(f"دابەزی: {path}" if ok else "ئەم وێنەیە دانابەزێت")
+        if not ok:
+            self.message(f"ئەم وێنەیە دانابەزێت ({info}) — یەکێکی تر هەڵبژێرە", 10000)
+            return
+        path, low = info.split("|")[0], info.endswith("|low")
+        self.dl_count += 1
+        self.message(f"✔ دابەزی ({self.dl_count}): {path}" + ("  — ماڵپەڕەکە تەنها وێنەی بچووکی دا" if low else ""), 12000)
+        # یەکەم جار فۆڵدەرەکە دەکاتەوە بۆ ئەوەی بزانیت وێنەکان لە کوێن
+        if not self.dl_shown_folder:
+            self.dl_shown_folder = True
+            reveal_in_folder(Path(path))
 
     def download_selected(self):
         picked = [r for r in self.results if r.full_url in self.selected]
@@ -1301,6 +1319,18 @@ class MainWindow(QMainWindow):
 def urllib_unquote(s: str) -> str:
     import urllib.parse
     return urllib.parse.unquote(s)
+
+
+def reveal_in_folder(p: Path):
+    """فۆڵدەرەکە دەکاتەوە و فایلەکە دیاری دەکات."""
+    try:
+        if sys.platform == "win32":
+            import subprocess
+            subprocess.Popen(["explorer", "/select,", str(p)])
+        else:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(p.parent)))
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def unique(p: Path) -> Path:

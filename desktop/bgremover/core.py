@@ -16,6 +16,7 @@ import json
 import os
 import sys
 import threading
+import time
 import urllib.parse
 from dataclasses import dataclass, asdict, field
 from pathlib import Path
@@ -38,7 +39,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "1.2"
+VERSION = "1.3"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 
@@ -55,8 +56,29 @@ def models_dir() -> Path:
     return p
 
 
+def _known_pictures() -> Optional[Path]:
+    """فۆڵدەری ڕاستەقینەی Pictures لە ویندۆز (ئەگەر OneDrive گواستبێتییەوە)."""
+    if sys.platform != "win32":
+        return None
+    try:
+        import ctypes
+        from ctypes import wintypes
+        class GUID(ctypes.Structure):
+            _fields_ = [("a", wintypes.DWORD), ("b", wintypes.WORD), ("c", wintypes.WORD), ("d", ctypes.c_ubyte * 8)]
+        # FOLDERID_Pictures {33E28130-4E1E-4676-835A-98395C3BC3BB}
+        fid = GUID(0x33E28130, 0x4E1E, 0x4676, (ctypes.c_ubyte * 8)(0x83, 0x5A, 0x98, 0x39, 0x5C, 0x3B, 0xC3, 0xBB))
+        out = ctypes.c_wchar_p()
+        if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(fid), 0, None, ctypes.byref(out)) == 0:
+            path = Path(out.value)
+            ctypes.windll.ole32.CoTaskMemFree(out)
+            return path
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
 def default_save_dir() -> Path:
-    pics = Path.home() / "Pictures"
+    pics = _known_pictures() or Path.home() / "Pictures"
     p = (pics if pics.exists() else Path.home()) / APP_NAME
     p.mkdir(parents=True, exist_ok=True)
     return p
@@ -91,7 +113,17 @@ def http_get(url: str, *, params=None, headers=None, timeout=45) -> bytes:
     h = {"User-Agent": _ua_for(url), "Accept": "*/*"}
     if headers:
         h.update(headers)
-    r = _session.get(url, params=params, headers=h, timeout=timeout)
+    for attempt in range(4):
+        r = _session.get(url, params=params, headers=h, timeout=timeout)
+        # Wikimedia و هەندێک سێرڤەر کاتێک چەند وێنەیەک پێکەوە دادەگیرێن 429 دەدەنەوە → چاوەڕێ و دووبارە
+        if r.status_code in (429, 503) and attempt < 3:
+            try:
+                wait = min(8.0, float(r.headers.get("Retry-After", "")))
+            except ValueError:
+                wait = 1.5 * (attempt + 1)
+            time.sleep(max(0.5, wait))
+            continue
+        break
     if r.status_code >= 400:
         hint = {401: "ڕێگە نەدرا", 403: "ڕێگە نەدرا", 404: "نەدۆزرایەوە",
                 429: "داواکاری زۆرە، کەمێک چاوەڕێ بکە"}.get(r.status_code,
@@ -220,9 +252,11 @@ def search(q: str, serper_key: str = "", page: int = 1) -> tuple[str, list[Image
     seen, out = set(), []
     for i in range(max((len(l) for l in lists), default=0)):
         for l in lists:
-            if i < len(l) and l[i].full_url not in seen:
-                seen.add(l[i].full_url)
-                out.append(l[i])
+            if i < len(l):
+                k = l[i].full_url.split("?")[0].lower()   # هەمان وێنە لە ckb/en/ar تەنها یەک جار
+                if k not in seen:
+                    seen.add(k)
+                    out.append(l[i])
     return "free", out
 
 
@@ -230,6 +264,44 @@ def search(q: str, serper_key: str = "", page: int = 1) -> tuple[str, list[Image
 
 def proxied(url: str) -> str:
     return "https://wsrv.nl/?url=" + urllib.parse.quote(url, safe="") + "&q=100"
+
+
+_BAD_CHARS = '<>:"/\\|?*'
+
+
+def safe_filename(name: str, default: str = "image") -> str:
+    """ناوێک کە لە ویندۆزدا دروستە (بێ پیتی قەدەغە، بێ ناوی پارێزراو)."""
+    name = "".join("_" if (c in _BAD_CHARS or ord(c) < 32) else c for c in name)
+    name = name.strip(" .")[:60].strip(" .")
+    if not name or name.split(".")[0].upper() in {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(10)),
+                                                    *(f"LPT{i}" for i in range(10))}:
+        return default
+    return name
+
+
+def save_downloaded(b: bytes, folder: Path, name: str) -> Path:
+    """فایلی داگیراو وەک خۆی پاشەکەوت دەکات (AVIF/HEIC → PNG بۆ ئەوەی هەموو بەرنامەیەک بیکاتەوە)."""
+    folder.mkdir(parents=True, exist_ok=True)
+    ext = sniff_ext(b)
+    name = safe_filename(name)
+    if ext in ("jpg", "png", "webp", "gif"):
+        p = _unique(folder / f"{name}.{ext}")
+        p.write_bytes(b)
+        return p
+    im = Image.open(io.BytesIO(b))
+    im = ImageOps.exif_transpose(im)
+    p = _unique(folder / f"{name}.png")
+    im.save(p)
+    return p
+
+
+def _unique(p: Path) -> Path:
+    i = 1
+    q = p
+    while q.exists():
+        q = p.with_name(f"{p.stem} ({i}){p.suffix}")
+        i += 1
+    return q
 
 
 def sniff_ext(b: bytes) -> Optional[str]:
@@ -241,8 +313,10 @@ def sniff_ext(b: bytes) -> Optional[str]:
         return "webp"
     if b[:3] == b"GIF":
         return "gif"
-    if b[4:12] in (b"ftypavif", b"ftypheic", b"ftypmif1"):
+    if b[4:12] in (b"ftypavif", b"ftypavis", b"ftypheic", b"ftypheix", b"ftypmif1", b"ftypmsf1", b"ftyphevc"):
         return "avif"
+    if b[:2] == b"BM":
+        return "bmp"
     return None
 
 
@@ -253,7 +327,7 @@ def fetch_image_bytes(url: str, fallback: str = "", referer: str = "") -> tuple[
     """
     ref = referer or "{0.scheme}://{0.netloc}/".format(urllib.parse.urlparse(url))
     attempts = [
-        lambda: http_get(url, headers={"Accept": "image/avif,image/webp,image/*,*/*;q=0.8"}),
+        lambda: http_get(url, headers={"Accept": "image/jpeg,image/png,image/webp,image/*;q=0.8,*/*;q=0.5"}),
         lambda: http_get(url, headers={"Referer": ref, "User-Agent": UA_DESKTOP}),
         lambda: http_get(proxied(url)),
     ]

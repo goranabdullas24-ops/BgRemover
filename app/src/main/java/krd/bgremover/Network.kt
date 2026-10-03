@@ -61,21 +61,34 @@ object Net {
         }
         .build()
 
-    fun bytes(request: Request): ByteArray =
-        client.newCall(request).execute().use { resp ->
-            val body = resp.body?.bytes() ?: ByteArray(0)
-            if (!resp.isSuccessful) {
-                val hint = when (resp.code) {
-                    401, 403 -> "ڕێگە نەدرا"
-                    404 -> "نەدۆزرایەوە"
-                    429 -> "داواکاری زۆرە، کەمێک چاوەڕێ بکە"
-                    in 500..599 -> "سێرڤەر کێشەی هەیە"
-                    else -> "هەڵەی تۆڕ"
+    fun bytes(request: Request): ByteArray {
+        var attempt = 0
+        while (true) {
+            var wait = 0L
+            val body = client.newCall(request).execute().use { resp ->
+                // 429/503: سێرڤەر دەڵێت «خێرا مەبە» → چاوەڕێ و دووبارە (Wikimedia کاتی داگرتنی چەند وێنەیەک)
+                if ((resp.code == 429 || resp.code == 503) && attempt < 3) {
+                    wait = (resp.header("Retry-After")?.toLongOrNull()?.times(1000) ?: (1500L * (attempt + 1))).coerceIn(500, 8000)
+                    return@use null
                 }
-                throw IOException("$hint (HTTP ${resp.code})")
+                val body = resp.body?.bytes() ?: ByteArray(0)
+                if (!resp.isSuccessful) {
+                    val hint = when (resp.code) {
+                        401, 403 -> "ڕێگە نەدرا"
+                        404 -> "نەدۆزرایەوە"
+                        429 -> "داواکاری زۆرە، کەمێک چاوەڕێ بکە"
+                        in 500..599 -> "سێرڤەر کێشەی هەیە"
+                        else -> "هەڵەی تۆڕ"
+                    }
+                    throw IOException("$hint (HTTP ${resp.code})")
+                }
+                body
             }
-            body
+            if (body != null) return body
+            attempt++
+            Thread.sleep(wait)
         }
+    }
 }
 
 object ImageSearch {
@@ -132,7 +145,7 @@ object ImageSearch {
         // تێکەڵکردن بە نۆرە بۆ ئەوەی هەموو سەرچاوەکان لە سەرەتادا دەربکەون
         val lists = results.mapNotNull { it.getOrNull() }
         val maxLen = lists.maxOfOrNull { it.size } ?: 0
-        for (i in 0 until maxLen) for (l in lists) if (i < l.size) out.putIfAbsent(l[i].fullUrl, l[i])
+        for (i in 0 until maxLen) for (l in lists) if (i < l.size) out.putIfAbsent(l[i].fullUrl.substringBefore('?').lowercase(), l[i])
         out.values.toList()
     }
 
@@ -327,13 +340,18 @@ object ImageUtils {
 
     /** داگرتنی فایلی ئەسڵی وەک خۆی (بێ گۆڕین و بێ بچووککردنەوە). */
     suspend fun downloadRaw(url: String, referer: String? = null, ua: String? = null): Pair<ByteArray, String> = withContext(Dispatchers.IO) {
-        val rb = Request.Builder().url(url).header("Accept", "image/*,*/*;q=0.8")
+        val rb = Request.Builder().url(url).header("Accept", "image/jpeg,image/png,image/webp,image/*;q=0.8,*/*;q=0.5")
         if (!referer.isNullOrBlank()) rb.header("Referer", referer)
         if (!ua.isNullOrBlank()) rb.header("User-Agent", ua)
         val req = rb.build()
         val bytes = Net.bytes(req)
-        val mime = sniffMime(bytes) ?: throw IOException("ئەمە وێنە نییە")
-        bytes to mime
+        val mime = sniffMime(bytes)
+        if (mime != null) return@withContext bytes to mime
+        // AVIF/HEIC/BMP...: دەیکاتەوە و وەک PNG (بێ لەدەستدانی کوالیتی) پاشەکەوتی دەکات
+        val bmp = decodeBytes(bytes)
+        val bos = java.io.ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, bos)
+        bos.toByteArray() to "image/png"
     }
 
     private fun sniffMime(b: ByteArray): String? = when {
