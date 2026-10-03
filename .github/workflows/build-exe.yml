@@ -51,22 +51,6 @@ jobs:
             main.py
           dir dist
 
-      - name: Debug console build (shows startup errors)
-        timeout-minutes: 10
-        run: |
-          pyinstaller --noconfirm --onefile --console --name BgRemoverDebug `
-            --collect-data onnxruntime --collect-binaries onnxruntime `
-            --hidden-import pillow_heif --hidden-import pillow_avif --hidden-import scipy._cyutility --collect-submodules scipy.ndimage --collect-submodules scipy._lib `
-            --exclude-module tkinter --exclude-module matplotlib `
-            main.py | Out-Null
-          Invoke-WebRequest -Uri "https://raw.githubusercontent.com/danielgatis/rembg/main/examples/girl-2.jpg" -OutFile test.jpg
-          $out = Join-Path (Get-Location) "dbg_out.png"
-          $p = Start-Process -FilePath dist\BgRemoverDebug.exe -ArgumentList "--selftest","test.jpg",$out -PassThru -NoNewWindow -RedirectStandardError dbg_err.txt -RedirectStandardOutput dbg_out.txt
-          if (-not $p.WaitForExit(240000)) { Stop-Process -Id $p.Id -Force }
-          Get-Content dbg_err.txt -Tail 25 | ForEach-Object { "::warning title=dbg-stderr::$_" }
-          Get-Content dbg_out.txt -Tail 10 | ForEach-Object { "::warning title=dbg-stdout::$_" }
-          if (Test-Path selftest.log) { Get-Content selftest.log -Tail 5 | ForEach-Object { "::warning title=dbg-log::$_" } }
-
       - name: Self-test with Python (no packaging)
         timeout-minutes: 10
         run: |
@@ -105,9 +89,14 @@ jobs:
           "exit code: $($p.ExitCode)"
           if ($p.ExitCode -ne 0) { exit 1 }
 
+      - name: Zip for download (browsers often block bare .exe)
+        run: Compress-Archive -Path dist\BgRemover.exe -DestinationPath dist\BgRemover-Desktop.zip -CompressionLevel Optimal
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: desktop-v${{ github.run_number }}
           name: BgRemover Desktop v${{ github.run_number }}
           make_latest: false
-          files: desktop/dist/BgRemover.exe
+          files: |
+            desktop/dist/BgRemover.exe
+            desktop/dist/BgRemover-Desktop.zip
