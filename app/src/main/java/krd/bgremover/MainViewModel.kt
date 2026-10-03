@@ -617,8 +617,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ───────────────────────── پاشەکەوت / گەڕاندنەوەی دۆخ ─────────────────────────
 
-    init {
-        viewModelScope.launch { restoreState() }
+    private var started = false
+
+    /**
+     * restore = true: ئەندرۆید ئەپەکەی لە پشتەوە داخستبوو (بۆ نموونە چوویتە سەر ئەپێکی تر) → وەک خۆی دەگەڕێتەوە.
+     * restore = false: بەکارهێنەر ئەپەکەی بە تەواوی داخستبوو → لە سەرەتاوە دەست پێدەکات.
+     */
+    fun start(restore: Boolean) {
+        if (started) return
+        started = true
+        if (restore) {
+            viewModelScope.launch { restoreState() }
+        } else {
+            restoring = false
+            viewModelScope.launch(Dispatchers.IO) {
+                stateDir.listFiles()?.forEach { it.delete() }
+                File(getApplication<Application>().filesDir, "batch").listFiles()?.forEach { it.delete() }
+            }
+        }
     }
 
     private fun resultToJson(r: ImageResult) = org.json.JSONObject()

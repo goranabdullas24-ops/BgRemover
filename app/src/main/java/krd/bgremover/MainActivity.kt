@@ -59,6 +59,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // savedInstanceState تەنها کاتێک هەیە کە ئەندرۆید خۆی ئەپەکەی داخستبێت (نەک بەکارهێنەر)
+        vm.start(restore = savedInstanceState?.getBoolean(KEEP_STATE) == true)
         enableEdgeToEdge()
         setContent {
             MaterialTheme(colorScheme = lightColorScheme(primary = Purple, secondary = Purple)) {
@@ -68,6 +70,13 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEEP_STATE, true)
+    }
+
+    companion object { private const val KEEP_STATE = "keep_state" }
 
     /** کاتێک دەچیتە سەر ئەپێکی تر: دۆخ پاشەکەوت دەکرێت. */
     override fun onStop() {

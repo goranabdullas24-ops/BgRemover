@@ -450,7 +450,8 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence.Paste, self, activated=self.paste_image)
         QShortcut(QKeySequence("Ctrl+O"), self, activated=self.open_files)
         QShortcut(QKeySequence("Ctrl+S"), self, activated=self.save_result)
-        QTimer.singleShot(0, self.restore_state)
+        # هەر جارێک بەرنامەکە دەکرێتەوە لە سەرەتاوە دەست پێدەکات (تەنها قەبارەی پەنجەرە دەمێنێتەوە)
+        QTimer.singleShot(0, self.fresh_start)
 
     # ───── ڕووکار ─────
     def _build(self):
@@ -1233,28 +1234,26 @@ class MainWindow(QMainWindow):
         self.batch_stop = True
         try:
             d = self._state_dir()
-            st = {
-                "query": self.q.text(), "last_query": self.last_query, "page": self.page,
-                "source": self.source, "can_more": self.can_more, "bg": self.bg,
-                "results": [asdict(r) for r in self.results],
-                "batch": [asdict(b) | {"status": "WAITING" if b.status == "WORKING" else b.status} for b in self.batch],
-                "next_id": self.next_id, "orig_name": self.orig_name, "upscaled": self.upscaled,
-                "low": self.low_quality, "has_orig": self.original is not None, "has_cut": self.cutout is not None,
-                "geometry": [self.x(), self.y(), self.width(), self.height()],
-            }
-            if self.original is not None:
-                self.original.save(d / "original.png")
-            if self.orig_bytes:
-                (d / "original.raw").write_bytes(self.orig_bytes)
-            else:
-                (d / "original.raw").unlink(missing_ok=True)
-            if self.cutout is not None:
-                self.cutout.save(d / "cutout.png")
-            (d / "state.json").write_text(json.dumps(st, ensure_ascii=False), "utf-8")
+            (d / "state.json").write_text(json.dumps({"geometry": [self.x(), self.y(), self.width(), self.height()]}), "utf-8")
         except Exception:  # noqa: BLE001
-            traceback.print_exc()
+            pass
         self.thumb_pool.shutdown(wait=False, cancel_futures=True)
         super().closeEvent(e)
+
+    def fresh_start(self):
+        import shutil
+        d = self._state_dir()
+        try:
+            g = json.loads((d / "state.json").read_text("utf-8")).get("geometry")
+            if g:
+                self.setGeometry(*g)
+        except Exception:  # noqa: BLE001
+            pass
+        shutil.rmtree(d, ignore_errors=True)
+        shutil.rmtree(core.data_dir() / "batch", ignore_errors=True)
+        self._build_chips()
+        self._populate_grid()
+        self._show_work()
 
     def restore_state(self):
         d = self._state_dir()
