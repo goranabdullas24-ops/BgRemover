@@ -20,6 +20,6 @@ jobs:
         if: always()
         shell: python
         run: |
-          for l in open("diag.txt", encoding="utf-8", errors="replace"):
-              l = l.rstrip()
-              if l: print("::warning title=diag::" + l.replace("%", "%25"))
+          ls = [l.rstrip() for l in open("diag.txt", encoding="utf-8", errors="replace") if l.strip() and "propagateSizeHints" not in l]
+          for i in range(0, len(ls), 25):
+              print("::warning title=diag%d::" % i + "%0A".join(x.replace("%", "%25") for x in ls[i:i+25]))
