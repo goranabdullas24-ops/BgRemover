@@ -170,10 +170,10 @@ fun App(vm: MainViewModel = viewModel()) {
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                Box(
-                    Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Color.White),
-                    contentAlignment = Alignment.Center
-                ) { Text("SG", color = Accent, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium) }
+                Image(
+                    androidx.compose.ui.res.painterResource(R.drawable.logo), contentDescription = "SG search",
+                    modifier = Modifier.size(46.dp).border(2.dp, Color(0x99FFFFFF), RoundedCornerShape(13.dp))
+                )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     Text("SG search", color = Color.White, fontWeight = FontWeight.ExtraBold,

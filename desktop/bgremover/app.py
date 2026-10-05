@@ -756,7 +756,12 @@ class MainWindow(QMainWindow):
         hl.setContentsMargins(18, 14, 18, 14)
         hl.setSpacing(12)
         logo = QLabel()
-        logo.setPixmap(make_icon().pixmap(44, 44))
+        lp = logo_path()
+        logo.setPixmap(QPixmap(str(lp)).scaled(48, 48, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                       if lp else make_icon().pixmap(48, 48))
+        logo.setFixedSize(54, 54)
+        logo.setAlignment(Qt.AlignCenter)
+        logo.setStyleSheet("background: rgba(255,255,255,60); border: 2px solid rgba(255,255,255,170); border-radius: 15px;")
         hl.addWidget(logo)
         tbox = QVBoxLayout()
         tbox.setSpacing(0)
@@ -2061,30 +2066,39 @@ def unique(p: Path) -> Path:
         i += 1
 
 
+def logo_path() -> Optional[Path]:
+    """لۆگۆی SG search (هەمان وێنەی ئایکۆن)."""
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
+    for p in (base / "bgremover" / "assets" / "logo.png", Path(__file__).resolve().parent / "assets" / "logo.png"):
+        if p.exists():
+            return p
+    return None
+
+
 def make_icon() -> QIcon:
+    p = logo_path()
+    if p is not None:
+        ic = QIcon(str(p))
+        if not ic.isNull():
+            return ic
     from PySide6.QtGui import QLinearGradient, QFont
     pm = QPixmap(256, 256)
     pm.fill(Qt.transparent)
-    p = QPainter(pm)
-    p.setRenderHint(QPainter.Antialiasing)
-    p.setRenderHint(QPainter.TextAntialiasing)
+    pa = QPainter(pm)
+    pa.setRenderHint(QPainter.Antialiasing)
     g = QLinearGradient(0, 0, 256, 256)
     g.setColorAt(0, QColor(ACCENT))
     g.setColorAt(1, QColor(ACCENT2))
-    p.setBrush(QBrush(g))
-    p.setPen(Qt.NoPen)
-    p.drawRoundedRect(8, 8, 240, 240, 60, 60)
+    pa.setBrush(QBrush(g))
+    pa.setPen(Qt.NoPen)
+    pa.drawRoundedRect(8, 8, 240, 240, 60, 60)
     f = QFont("Segoe UI")
     f.setPixelSize(118)
     f.setWeight(QFont.Black)
-    p.setFont(f)
-    p.setPen(QColor("white"))
-    p.drawText(QRect(0, 0, 256, 236), Qt.AlignCenter, "SG")
-    # شریتی بچووکی «گەڕان» لە خوارەوە
-    p.setBrush(QBrush(QColor(255, 255, 255, 220)))
-    p.setPen(Qt.NoPen)
-    p.drawRoundedRect(78, 186, 100, 14, 7, 7)
-    p.end()
+    pa.setFont(f)
+    pa.setPen(QColor("white"))
+    pa.drawText(QRect(0, 0, 256, 236), Qt.AlignCenter, "SG")
+    pa.end()
     return QIcon(pm)
 
 

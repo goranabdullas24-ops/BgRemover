@@ -28,5 +28,8 @@ box = d.textbbox((0, 0), "SG", font=font)
 w, h = box[2] - box[0], box[3] - box[1]
 d.text(((S - w) / 2 - box[0], (S - h) / 2 - box[1] - 40), "SG", font=font, fill="white")
 d.rounded_rectangle((312, 760, 712, 812), 26, fill=(255, 255, 255, 225))
+import os
+os.makedirs("bgremover/assets", exist_ok=True)
+im.resize((512, 512), Image.LANCZOS).save("bgremover/assets/logo.png")
 im.save("icon.ico", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
 im.resize((512, 512), Image.LANCZOS).save("icon.png")

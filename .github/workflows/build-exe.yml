@@ -44,7 +44,7 @@ jobs:
       - name: Build EXE
         run: |
           python make_icon.py
-          pyinstaller --noconfirm --onefile --windowed --name BgRemover --icon icon.ico `
+          pyinstaller --noconfirm --onefile --windowed --name BgRemover --icon icon.ico --add-data "bgremover/assets;bgremover/assets" `
             --collect-data onnxruntime --collect-binaries onnxruntime `
             --hidden-import pillow_heif --hidden-import pillow_avif --hidden-import scipy._cyutility --collect-submodules scipy.ndimage --collect-submodules scipy._lib `
             --exclude-module tkinter --exclude-module matplotlib `
@@ -94,7 +94,7 @@ jobs:
         run: |
           $ver = (Select-String -Path bgremover\core.py -Pattern '^VERSION = "(.+)"').Matches[0].Groups[1].Value
           "APP_VERSION=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append
-          pyinstaller --noconfirm --onedir --windowed --name BgRemover --icon icon.ico --distpath dist\onedir --workpath build\onedir `
+          pyinstaller --noconfirm --onedir --windowed --name BgRemover --icon icon.ico --add-data "bgremover/assets;bgremover/assets" --distpath dist\onedir --workpath build\onedir `
             --collect-data onnxruntime --collect-binaries onnxruntime `
             --hidden-import pillow_heif --hidden-import pillow_avif --hidden-import scipy._cyutility --collect-submodules scipy.ndimage --collect-submodules scipy._lib `
             --exclude-module tkinter --exclude-module matplotlib `
