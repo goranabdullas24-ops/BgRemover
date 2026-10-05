@@ -76,9 +76,11 @@ object BackgroundRemover {
         val mask = IsNet.mask(ctx, src, onStatus)
         val focus = if (focusOnly) { onStatus("دۆزینەوەی کەسی سەرەکی (فۆکس)..."); PersonCut.focusMask(src) } else null
         if (personOnly && applyModNet(ctx, src, mask, onStatus)) {
+            // ماسکی مرۆڤ تەنها بۆ پاراستنی جلوبەرگ (بۆینباخ، کراسی سپی)
+            val prior = PersonCut.personMask(src)
             onStatus("پاککردنەوەی لێوارەکان...")
             return withContext(Dispatchers.Default) {
-                PersonCut.clean(mask, null, src.width, src.height, focus)
+                PersonCut.clean(mask, null, src.width, src.height, focus, prior)
                 MaskRefiner.refine(src, mask, light = true)
             }
         }

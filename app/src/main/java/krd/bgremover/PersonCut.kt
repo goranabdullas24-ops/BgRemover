@@ -150,7 +150,7 @@ object PersonCut {
      *  ٢. تەنها بەشە سەرەکییەکان دەمێننەوە (پارچە جیاکان لادەبرێن)
      *  ٣. ناوەوەی بابەت تەواو پڕ دەکرێت (نە نیمچە-ڕوون)
      */
-    fun clean(alpha: FloatArray, person: FloatArray?, w: Int, h: Int, focus: FloatArray? = null) {
+    fun clean(alpha: FloatArray, person: FloatArray?, w: Int, h: Int, focus: FloatArray? = null, prior: FloatArray? = null) {
         val n = w * h
         val r = max(4, (min(w, h) * 0.03f).roundToInt())
 
@@ -180,11 +180,58 @@ object PersonCut {
         }
 
         keepMain(alpha, w, h)
+        // جلوبەرگ (بۆینباخ، کراسی سپی لەسەر باکگراوندی سپی) نابێت لابرێت
+        fillClothingHoles(alpha, prior ?: person, w, h)
 
         // پڕکردنەوەی ناوەوە: پیکسڵی قووڵ لەناو بابەتدا = تەواو ڕوون نییە
         val deepPx = max(3f, min(w, h) * 0.015f)
         val dist = MaskOps.edt(BooleanArray(n) { alpha[it] <= 0.08f }, w, h)
         for (i in 0 until n) if (dist[i] > deepPx && alpha[i] > 0.15f) alpha[i] = 1f
+    }
+
+    /**
+     * ئەو «کونانەی» ماسکەکە کە بە دەوری کەسەکەوە گیراون، یان تەنها بە لای خوارەوەی وێنەوە لکاون
+     * (وەک بۆینباخ و کراسی سپی لە وێنەی نیوەی لەش) و لەناو ماسکی مرۆڤدان، پڕ دەکرێنەوە.
+     */
+    fun fillClothingHoles(alpha: FloatArray, person: FloatArray?, w: Int, h: Int) {
+        val n = w * h
+        var fgCount = 0
+        for (v in alpha) if (v > 0.5f) fgCount++
+        if (fgCount < 100) return
+        val label = IntArray(n)
+        val stack = IntArray(n)
+        val okIds = ArrayList<Boolean>().apply { add(false) }
+        var id = 0
+        for (start in 0 until n) {
+            if (label[start] != 0 || alpha[start] > 0.5f) continue
+            id++
+            var sp = 0
+            stack[sp++] = start; label[start] = id
+            var count = 0; var inside = 0
+            var touchEdge = false; var touchBottom = false
+            while (sp > 0) {
+                val p = stack[--sp]; count++
+                val x = p % w; val y = p / w
+                if (y == 0 || x == 0 || x == w - 1) touchEdge = true
+                if (y == h - 1) touchBottom = true
+                if (person != null && person[p] > 0.5f) inside++
+                if (x > 0) { val q = p - 1; if (label[q] == 0 && alpha[q] <= 0.5f) { label[q] = id; stack[sp++] = q } }
+                if (x < w - 1) { val q = p + 1; if (label[q] == 0 && alpha[q] <= 0.5f) { label[q] = id; stack[sp++] = q } }
+                if (y > 0) { val q = p - w; if (label[q] == 0 && alpha[q] <= 0.5f) { label[q] = id; stack[sp++] = q } }
+                if (y < h - 1) { val q = p + w; if (label[q] == 0 && alpha[q] <= 0.5f) { label[q] = id; stack[sp++] = q } }
+            }
+            if (touchEdge) { okIds.add(false); continue }
+            val ins = if (count > 0) inside.toFloat() / count else 0f
+            val ok = if (touchBottom) {
+                person != null && ins >= 0.7f && count <= 0.25f * fgCount
+            } else {
+                count <= 0.04f * fgCount || (person != null && ins >= 0.6f && count <= 0.25f * fgCount)
+            }
+            okIds.add(ok)
+        }
+        val fm = FloatArray(n) { val l = label[it]; if (l != 0 && okIds[l]) 1f else 0f }
+        val soft = MaskOps.box(fm, w, h, 1)
+        for (i in 0 until n) if (soft[i] > alpha[i]) alpha[i] = soft[i]
     }
 
     /** پارچەی جیا کە لە ٨٪ ی گەورەترین بەش بچووکترە لادەبرێت، لەگەڵ لێوارە نەرمەکەی. */
