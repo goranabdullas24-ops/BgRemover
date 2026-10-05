@@ -1,0 +1,22 @@
+name: Diag cut
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/diag-cut.yml", "desktop/tests/diag_cut.py"]
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: desktop } }
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q -r requirements.txt
+      - run: cp ../model/*.onnx bgremover/ 2>/dev/null; mkdir -p model && cp ../model/*.onnx model/ ; python tests/diag_cut.py ../cutdiag 2>&1 | tail -40
+      - name: Publish
+        if: always()
+        run: |
+          cd ../cutdiag && git init -q && git checkout -q -b ci-cut && git add -A && git -c user.name=ci -c user.email=ci@x commit -qm diag
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" ci-cut

@@ -595,6 +595,58 @@ def focus_select(a: np.ndarray, rgb: np.ndarray) -> np.ndarray:
     return a * np.clip(gate * 1.5, 0, 1)
 
 
+def fill_clothing_holes(a: np.ndarray, person: Optional[np.ndarray]) -> np.ndarray:
+    """
+    جلوبەرگی کەسەکە (بۆینباخ، کراسی سپی لەسەر باکگراوندی سپی...) نابێت لابرێت.
+    ئەو ناوچە «کونانەی» ماسکەکە کە بە دەوری کەسەکەوە گیراون (یان تەنها بە لای خوارەوەی وێنەوە
+    لکاون، وەک بۆینباخ لە وێنەی نیوەی لەش) و لەناو ماسکی مرۆڤی YOLO دان، پڕ دەکرێنەوە.
+    """
+    h, w = a.shape
+    fg = a > 0.5
+    if fg.sum() < 100:
+        return a
+    hole = ~fg
+    lab, n = nd.label(hole)
+    if n == 0:
+        return a
+    # ئەو ناوچانەی بە لای سەرەوە، چەپ یان ڕاستی وێنەوە لکاون = باکگراوندی ڕاستەقینە
+    edge = set(np.unique(lab[0, :])) | set(np.unique(lab[:, 0])) | set(np.unique(lab[:, -1]))
+    bottom = set(np.unique(lab[-1, :]))
+    edge.discard(0)
+    area_p = float(fg.sum())
+    idx = np.arange(1, n + 1)
+    sizes = nd.sum(np.ones_like(a), lab, idx)
+    inside = nd.mean((person > 0.5).astype(np.float32), lab, idx) if person is not None else np.zeros(n)
+    fill = np.zeros(n + 1, bool)
+    for k in range(1, n + 1):
+        if k in edge:
+            continue
+        sz = sizes[k - 1]
+        ins = inside[k - 1]
+        if k in bottom:
+            # تەنها بە خوارەوەوە لکاوە (وەک بۆینباخ): پێویستی بە دڵنیایی YOLO هەیە
+            ok = person is not None and ins >= 0.7 and sz <= 0.25 * area_p
+        else:
+            # کونی داخراو لەناو کەسەکەدا
+            ok = (sz <= 0.04 * area_p) or (person is not None and ins >= 0.6 and sz <= 0.25 * area_p)
+        fill[k] = ok
+    m = fill[lab]
+    if not m.any():
+        return a
+    m = nd.gaussian_filter(m.astype(np.float32), 1.0)
+    return np.maximum(a, m).astype(np.float32)
+
+
+def main_person_mask(instances) -> Optional[np.ndarray]:
+    """ماسکی YOLO ی کەسی سەرەکی (گەورەترین × متمانە)."""
+    best, bs = None, 0.0
+    for m, c, _ in instances:
+        sc = float((m > 0.5).sum()) * c
+        if sc > bs:
+            best, bs = m, sc
+    return best
+
+
 def solidify(a: np.ndarray) -> np.ndarray:
     h, w = a.shape
     d = nd.distance_transform_edt(a > 0.08)
@@ -659,11 +711,16 @@ def compute_alpha(im: Image.Image, opts: CutOptions, progress: ProgressFn = _noo
                 used_person = True
         except Exception:  # noqa: BLE001
             pass
+    inst = None
+    if opts.focus_only or used_person:
+        try:
+            inst = person_instances(work, progress)
+        except Exception:  # noqa: BLE001
+            inst = None
     if opts.focus_only:
         gated = False
         try:
-            inst = person_instances(work, progress)
-            g = main_person_gate(inst, rgb)
+            g = main_person_gate(inst, rgb) if inst else None
             if g is not None:
                 a = a * g
                 gated = True
@@ -675,6 +732,9 @@ def compute_alpha(im: Image.Image, opts: CutOptions, progress: ProgressFn = _noo
     else:
         progress("پاککردنەوەی دەوروبەر و لێوارەکان...")
     a = keep_main(a)
+    if os.environ.get("SG_NO_HOLEFILL") != "1":
+        # جلوبەرگ (بۆینباخ، کراسی سپی) دەپارێزرێت
+        a = fill_clothing_holes(a, main_person_mask(inst) if inst else None)
     a = solidify(a)
     return refine(rgb, a)
 
