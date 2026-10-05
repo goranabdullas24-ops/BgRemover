@@ -375,7 +375,7 @@ object ImageUtils {
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "img_${System.currentTimeMillis()}.$ext")
             put(MediaStore.Images.Media.MIME_TYPE, mime)
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/BgRemover/Original")
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/SG search/Original")
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
         val uri = r.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
@@ -393,7 +393,7 @@ object ImageUtils {
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "bg_${System.currentTimeMillis()}.png")
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/BgRemover")
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/SG search")
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
         val uri = r.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
@@ -411,7 +411,7 @@ object ImageUtils {
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, "bg_${System.currentTimeMillis()}.png")
             put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/BgRemover")
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/SG search")
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
         val uri = r.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)

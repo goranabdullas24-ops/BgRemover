@@ -302,7 +302,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 } catch (_: Exception) { false }
             }
             busy = null
-            message = if (ok) "پاشەکەوت کرا لە گاڵەری › Pictures/BgRemover/Original" else "داگرتن سەرنەکەوت"
+            message = if (ok) "پاشەکەوت کرا لە گاڵەری › Pictures/SG search/Original" else "داگرتن سەرنەکەوت"
         }
     }
 
@@ -316,7 +316,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         downloading = downloading + r.fullUrl
         viewModelScope.launch {
             val err = try { saveRaw(r.fullUrl, r.thumbUrl) } finally { downloading = downloading - r.fullUrl }
-            message = if (err == null) "✔ دابەزی › گاڵەری › Pictures/BgRemover/Original" +
+            message = if (err == null) "✔ دابەزی › گاڵەری › Pictures/SG search/Original" +
                 (if (lastRawLow) " (ماڵپەڕەکە تەنها وێنەی بچووکی دا)" else "")
             else "ئەم وێنەیە دانابەزێت ($err)"
         }
@@ -337,7 +337,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 if (saveRaw(r.fullUrl, r.thumbUrl) == null) ok++
             }
             busy = null
-            message = "$ok لە ${picked.size} وێنە دابەزی › Pictures/BgRemover/Original"
+            message = "$ok لە ${picked.size} وێنە دابەزی › Pictures/SG search/Original"
         }
     }
 
@@ -492,14 +492,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 withContext(Dispatchers.IO) { ImageUtils.savePngFileToGallery(getApplication(), File(st.file)) }
                 true
             } catch (e: Exception) { false }
-            if (!quiet) message = if (ok) "✔ پاشەکەوت کرا لە گاڵەری › Pictures/BgRemover" else "پاشەکەوت سەرنەکەوت"
+            if (!quiet) message = if (ok) "✔ پاشەکەوت کرا لە گاڵەری › Pictures/SG search" else "پاشەکەوت سەرنەکەوت"
         }
     }
 
     fun saveAllInplace() {
         val done = results.filter { tiles[it.fullUrl]?.status == "DONE" }
         done.forEach { saveInplace(it, quiet = true) }
-        message = "✔ ${done.size} وێنە پاشەکەوت کران لە گاڵەری › Pictures/BgRemover"
+        message = "✔ ${done.size} وێنە پاشەکەوت کران لە گاڵەری › Pictures/SG search"
     }
 
     fun openInplace(r: ImageResult) {
@@ -631,7 +631,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             message = try {
                 withContext(Dispatchers.IO) { ImageUtils.saveToGallery(getApplication(), bmp) }
-                "پاشەکەوت کرا لە گاڵەری › Pictures/BgRemover"
+                "پاشەکەوت کرا لە گاڵەری › Pictures/SG search"
             } catch (e: Exception) {
                 "پاشەکەوت نەکرا: ${e.message}"
             }
@@ -714,7 +714,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             message = try {
                 withContext(Dispatchers.IO) { ImageUtils.saveToGallery(getApplication(), bmp) }
-                "پاشەکەوت کرا لە گاڵەری › Pictures/BgRemover"
+                "پاشەکەوت کرا لە گاڵەری › Pictures/SG search"
             } catch (e: Exception) {
                 "پاشەکەوت نەکرا: ${e.message}"
             }
@@ -847,7 +847,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             busy = null
-            message = "$ok وێنە پاشەکەوت کرا لە گاڵەری › Pictures/BgRemover"
+            message = "$ok وێنە پاشەکەوت کرا لە گاڵەری › Pictures/SG search"
         }
     }
 

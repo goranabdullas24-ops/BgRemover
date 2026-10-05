@@ -39,7 +39,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "2.0"
+VERSION = "2.1"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 
@@ -79,7 +79,7 @@ def _known_pictures() -> Optional[Path]:
 
 def default_save_dir() -> Path:
     pics = _known_pictures() or Path.home() / "Pictures"
-    p = (pics if pics.exists() else Path.home()) / APP_NAME
+    p = (pics if pics.exists() else Path.home()) / "SG search"
     p.mkdir(parents=True, exist_ok=True)
     return p
 

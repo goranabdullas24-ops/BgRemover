@@ -53,28 +53,28 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-// ── ڕووکار: تێمی تاریکی شەو + ڕەنگی وەنەوشەیی/پەمەیی (وەک بەرنامەی کۆمپیوتەر) ──
-private val Bg = Color(0xFF0E0F1A)
-private val SurfaceC = Color(0xFF161829)
-private val CardC = Color(0xFF1D2036)
-private val Card2 = Color(0xFF252946)
-private val LineC = Color(0xFF30355A)
-private val TextC = Color(0xFFECEEFF)
-private val Muted = Color(0xFF9BA1C9)
-private val Accent = Color(0xFF8B6CFF)
-private val Accent2 = Color(0xFFFF5FA2)
-private val OkC = Color(0xFF3DDC97)
-private val ErrC = Color(0xFFFF6B6B)
+// ── ڕووکار: تێمی ڕووناک + ڕەنگی وەنەوشەیی/پەمەیی (وەک بەرنامەی کۆمپیوتەر) ──
+private val Bg = Color(0xFFF6F4FF)
+private val SurfaceC = Color(0xFFFFFFFF)
+private val CardC = Color(0xFFFFFFFF)
+private val Card2 = Color(0xFFF2EFFD)
+private val LineC = Color(0xFFE3DEF6)
+private val TextC = Color(0xFF1D1B33)
+private val Muted = Color(0xFF6B6890)
+private val Accent = Color(0xFF7B5CF0)
+private val Accent2 = Color(0xFFF0508F)
+private val OkC = Color(0xFF14A86A)
+private val ErrC = Color(0xFFE5484D)
 private val Purple = Accent
 private val Grad = Brush.linearGradient(listOf(Accent, Accent2))
 
 private fun dims(w: Int, h: Int) = "\u200e${w}×${h}\u200e"
 
-private val AppColors = darkColorScheme(
+private val AppColors = lightColorScheme(
     primary = Accent, onPrimary = Color.White,
-    primaryContainer = Card2, onPrimaryContainer = Color.White,
+    primaryContainer = Card2, onPrimaryContainer = Accent,
     secondary = Accent2, onSecondary = Color.White,
-    secondaryContainer = Card2, onSecondaryContainer = Color.White,
+    secondaryContainer = Card2, onSecondaryContainer = Accent2,
     tertiary = OkC,
     background = Bg, onBackground = TextC,
     surface = SurfaceC, onSurface = TextC,
@@ -166,19 +166,19 @@ fun App(vm: MainViewModel = viewModel()) {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(Color(0xFF1A1640), Color(0xFF2A1638))))
+                    .background(Brush.horizontalGradient(listOf(Accent, Accent2)))
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Box(
-                    Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Grad),
+                    Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Color.White),
                     contentAlignment = Alignment.Center
-                ) { Icon(Icons.Default.AutoFixHigh, null, tint = Color.White) }
+                ) { Text("SG", color = Accent, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium) }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("BgRemover", color = Color.White, fontWeight = FontWeight.ExtraBold,
+                    Text("SG search", color = Color.White, fontWeight = FontWeight.ExtraBold,
                         style = MaterialTheme.typography.titleLarge)
-                    Text("گەڕان · لابردنی باکگراوند · Upscale بە AI", color = Color(0xFFC9C2FF),
+                    Text("گەڕان · لابردنی باکگراوند · Upscale بە AI", color = Color(0xE6FFFFFF),
                         style = MaterialTheme.typography.labelMedium)
                 }
                 IconButton(onClick = { showSettings = true }) {
@@ -563,16 +563,16 @@ private fun TileIcon(
         modifier = Modifier
             .size(34.dp)
             .clip(CircleShape)
-            .background(Color(0xC80E0F1A))
-            .border(1.dp, Color(0x33FFFFFF), CircleShape)
+            .background(Color(0xF0FFFFFF))
+            .border(1.dp, Color(0x337B5CF0), CircleShape)
             .clickable(enabled = enabled && !loading, onClick = onClick)
     ) {
         if (loading) {
-            CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+            CircularProgressIndicator(Modifier.size(18.dp), color = Accent, strokeWidth = 2.dp)
         } else if (text != null) {
-            Text(text, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+            Text(text, color = Accent, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.labelMedium)
         } else {
-            Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = label, tint = Accent, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -604,7 +604,7 @@ private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Un
             Text(
                 title,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = TextC,
                 modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp)
             )
             content()
@@ -629,11 +629,11 @@ private fun ColorChip(color: Int?, selected: Boolean, onClick: () -> Unit) {
 
 private fun Modifier.checkerboard(cell: Dp = 12.dp) = drawBehind {
     val s = cell.toPx()
-    drawRect(Color(0xFF20233D))
+    drawRect(Color.White)
     val cols = (size.width / s).toInt() + 1
     val rows = (size.height / s).toInt() + 1
     for (y in 0 until rows) for (x in 0 until cols) {
-        if ((x + y) % 2 == 0) drawRect(Color(0xFF2A2E4C), Offset(x * s, y * s), Size(s, s))
+        if ((x + y) % 2 == 0) drawRect(Color(0xFFECE8F7), Offset(x * s, y * s), Size(s, s))
     }
 }
 
@@ -874,10 +874,14 @@ private fun ResultTile(vm: MainViewModel, item: ImageResult, loader: ImageLoader
             )
         }
         // شریتی خوارەوە
-        Box(
-            Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(48.dp)
-                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xDD080812))))
-        )
+        if (done) {
+            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(30.dp).background(Color(0xF0FFFFFF)))
+        } else {
+            Box(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(48.dp)
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xDD080812))))
+            )
+        }
         val label = when {
             done -> "✓ ${dims(st.w, st.h)}" + if (st.enhanced) "  ✨HD" else ""
             item.width > 0 && item.height > 0 -> dims(item.width, item.height)

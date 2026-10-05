@@ -144,21 +144,21 @@ jobs:
           Compress-Archive -Path $root -DestinationPath "dist\BgRemover-Desktop-v$ver.zip" -CompressionLevel Optimal
           Compress-Archive -Path dist\BgRemover.exe -DestinationPath dist\BgRemover-Desktop.zip -CompressionLevel Optimal
           # small zip (< 25 MB): online setup + source
-          $small = "pkg2\BgRemover-Desktop-v$ver"
+          $small = "pkg2\SG-search-Desktop-v$ver"
           New-Item -ItemType Directory -Force -Path $small | Out-Null
           Copy-Item -Recurse "$root\source" "$small\source"
-          Copy-Item dist\BgRemover-Setup-Online-$ver.exe "$small\BgRemover-Setup-$ver.exe"
+          Copy-Item dist\BgRemover-Setup-Online-$ver.exe "$small\SG-search-Setup-$ver.exe"
           @"
           BgRemover Desktop v$ver
           =======================
-          BgRemover-Setup-$ver.exe : run it to install BgRemover on this computer.
+          SG-search-Setup-$ver.exe : run it to install SG search on this computer.
                                      (it downloads the program, ~110 MB, during install - internet needed)
                                      creates Desktop + Start menu shortcuts and an uninstaller.
           source\                  : full Python source code
 
           Code + Android app: https://github.com/goranabdullas24-ops/BgRemover
           "@ | Out-File -Encoding utf8 "$small\README.txt"
-          Compress-Archive -Path $small -DestinationPath "dist\BgRemover-Desktop-v$ver-small.zip" -CompressionLevel Optimal
+          Compress-Archive -Path $small -DestinationPath "dist\SG-search-Desktop-v$ver.zip" -CompressionLevel Optimal
           dir dist
 
       - uses: softprops/action-gh-release@v2
@@ -171,6 +171,7 @@ jobs:
             desktop/dist/BgRemover-Desktop.zip
             desktop/dist/BgRemover-Setup-*.exe
             desktop/dist/BgRemover-Desktop-v*.zip
+            desktop/dist/SG-search-Desktop-v*.zip
 
       - name: Test online setup (after release is published)
         timeout-minutes: 10

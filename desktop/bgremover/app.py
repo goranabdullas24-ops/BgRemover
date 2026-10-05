@@ -28,64 +28,71 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QColorDial
 
 from . import core
 
-# ───────────────────────── ڕووکار (تێمی تاریکی شەو + ڕەنگی وەنەوشەیی/پەمەیی) ─────────────────────────
-BG = "#0E0F1A"          # باکگراوندی پەنجەرە
-SURFACE = "#161829"     # بەشەکان
-CARD = "#1D2036"        # کارتەکان
-CARD2 = "#252946"       # کارتی بەرزتر / hover
-LINE = "#30355A"        # هێڵ
-TEXT = "#ECEEFF"
-MUTED = "#9BA1C9"
-ACCENT = "#8B6CFF"      # وەنەوشەیی
-ACCENT2 = "#FF5FA2"     # پەمەیی
-OK = "#3DDC97"
-ERR = "#FF6B6B"
+# ───────────────────────── ڕووکار (تێمی ڕووناک + ڕەنگی وەنەوشەیی/پەمەیی) ─────────────────────────
+APP_TITLE = "SG search"
+BG = "#F6F4FF"          # باکگراوندی پەنجەرە
+SURFACE = "#FFFFFF"     # بەشەکان
+CARD = "#FFFFFF"        # کارتەکان
+CARD2 = "#F2EFFD"       # دوگمە / hover
+LINE = "#E3DEF6"        # هێڵ
+TEXT = "#1D1B33"
+MUTED = "#6B6890"
+ACCENT = "#7B5CF0"      # وەنەوشەیی
+ACCENT2 = "#F0508F"     # پەمەیی
+OK = "#14A86A"
+ERR = "#E5484D"
 PURPLE = ACCENT
 GRAD = f"qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {ACCENT}, stop:1 {ACCENT2})"
-GRAD_H = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #9C82FF, stop:1 #FF79B4)"
+GRAD_H = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #8C70FF, stop:1 #FF62A0)"
 
 STYLE = f"""
 QWidget {{ font-size: 10.5pt; color: {TEXT}; }}
 QMainWindow, QDialog {{ background: {BG}; }}
 QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
 QWidget#root {{ background: {BG}; }}
-QFrame#header {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1A1640, stop:0.5 #1B1A3A, stop:1 #2A1638);
-                 border-radius: 18px; }}
+QFrame#header {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {ACCENT}, stop:1 {ACCENT2});
+                 border-radius: 20px; }}
+QFrame#header QPushButton {{ background: rgba(255,255,255,40); border: 1px solid rgba(255,255,255,90); color: white; }}
+QFrame#header QPushButton:hover {{ background: rgba(255,255,255,75); }}
+QFrame#header QPushButton#primary {{ background: white; color: {ACCENT}; border: none; }}
+QFrame#header QPushButton#primary:hover {{ background: #F4F0FF; }}
+QFrame#header QLineEdit {{ background: white; border: none; color: {TEXT}; }}
+QFrame#header QLineEdit:focus {{ background: white; border: 2px solid rgba(255,255,255,200); }}
 QLabel#appTitle {{ font-size: 17pt; font-weight: 800; color: white; }}
-QLabel#appSub {{ color: #C9C2FF; font-size: 9.5pt; }}
+QLabel#appSub {{ color: rgba(255,255,255,215); font-size: 9.5pt; }}
 QFrame#card {{ background: {CARD}; border-radius: 18px; border: 1px solid {LINE}; }}
 QFrame#panel {{ background: {SURFACE}; border-radius: 18px; border: 1px solid {LINE}; }}
-QLabel#cardTitle {{ font-weight: 700; font-size: 11.5pt; color: white; }}
+QLabel#cardTitle {{ font-weight: 700; font-size: 11.5pt; color: {TEXT}; }}
 QLabel#muted {{ color: {MUTED}; }}
 QLabel {{ background: transparent; }}
 QPushButton {{ border: 1px solid {LINE}; border-radius: 12px; padding: 8px 14px; background: {CARD2}; color: {TEXT}; font-weight: 600; }}
-QPushButton:hover {{ background: #2F3458; border-color: {ACCENT}; }}
-QPushButton:pressed {{ background: #23264A; }}
-QPushButton:disabled {{ color: #5D6290; background: #1A1C30; border-color: #23264A; }}
+QPushButton:hover {{ background: #E9E3FF; border-color: {ACCENT}; color: {ACCENT}; }}
+QPushButton:pressed {{ background: #DDD4FF; }}
+QPushButton:disabled {{ color: #B4B0CC; background: #F7F6FB; border-color: #ECE9F6; }}
 QPushButton#primary {{ background: {GRAD}; color: white; border: none; }}
 QPushButton#primary:hover {{ background: {GRAD_H}; }}
-QPushButton#primary:disabled {{ background: #3A3560; color: #8F8BB8; }}
+QPushButton#primary:disabled {{ background: #D9D2F5; color: white; }}
 QPushButton#ghost {{ background: transparent; border: 1px solid {LINE}; color: {MUTED}; }}
 QPushButton#ghost:hover {{ color: white; border-color: {ACCENT}; }}
-QLineEdit {{ border: 1.5px solid {LINE}; border-radius: 14px; padding: 10px 16px; background: #12142A; color: white;
+QLineEdit {{ border: 1.5px solid {LINE}; border-radius: 14px; padding: 10px 16px; background: white; color: {TEXT};
              font-size: 12pt; selection-background-color: {ACCENT}; selection-color: white; }}
-QLineEdit:focus {{ border-color: {ACCENT}; background: #15183A; }}
+QLineEdit:focus {{ border-color: {ACCENT}; background: white; }}
 QCheckBox, QRadioButton {{ color: {TEXT}; spacing: 8px; }}
-QGroupBox {{ color: white; border: 1px solid {LINE}; border-radius: 12px; margin-top: 14px; padding: 10px; font-weight: 600; }}
+QGroupBox {{ color: {TEXT}; border: 1px solid {LINE}; border-radius: 12px; margin-top: 14px; padding: 10px; font-weight: 600; }}
 QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top right; padding: 0 8px; }}
 QMenu {{ background: {CARD}; color: {TEXT}; border: 1px solid {LINE}; border-radius: 10px; padding: 6px; }}
 QMenu::item {{ padding: 7px 18px; border-radius: 6px; }}
 QMenu::item:selected {{ background: {ACCENT}; color: white; }}
-QToolTip {{ background: {CARD2}; color: white; border: 1px solid {ACCENT}; padding: 5px; border-radius: 6px; }}
-QToolButton#tileBtn {{ background: rgba(14,15,26,190); color: white; border-radius: 17px; font-size: 12.5pt; font-weight: 700;
-                       border: 1px solid rgba(255,255,255,40); }}
-QToolButton#tileBtn:hover {{ background: {GRAD}; border: none; }}
+QToolTip {{ background: white; color: {TEXT}; border: 1px solid {ACCENT}; padding: 5px; border-radius: 6px; }}
+QToolButton#tileBtn {{ background: rgba(255,255,255,235); color: {ACCENT}; border-radius: 17px; font-size: 12.5pt; font-weight: 800;
+                       border: 1px solid rgba(123,92,240,60); }}
+QToolButton#tileBtn:hover {{ background: {GRAD}; color: white; border: none; }}
 QToolButton#tileBtn:disabled {{ color: #777; }}
-QProgressBar {{ border: none; background: #24274A; height: 6px; border-radius: 3px; }}
+QProgressBar {{ border: none; background: #E9E5F8; height: 6px; border-radius: 3px; }}
 QProgressBar::chunk {{ background: {GRAD}; border-radius: 3px; }}
 QStatusBar {{ background: {SURFACE}; color: {MUTED}; border-top: 1px solid {LINE}; }}
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
-QScrollBar::handle:vertical {{ background: #3A3F6A; border-radius: 4px; min-height: 40px; }}
+QScrollBar::handle:vertical {{ background: #D3CCEE; border-radius: 4px; min-height: 40px; }}
 QScrollBar::handle:vertical:hover {{ background: {ACCENT}; }}
 QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ background: none; height: 0; }}
 QSplitter::handle {{ background: transparent; }}
@@ -234,7 +241,7 @@ class Checker(DragSource, QLabel):
                 s = 12
                 for y in range(0, r.height(), s):
                     for x in range(0, r.width(), s):
-                        p.fillRect(x, y, s, s, QColor("#2A2E4C") if (x // s + y // s) % 2 else QColor("#222540"))
+                        p.fillRect(x, y, s, s, QColor("#FFFFFF") if (x // s + y // s) % 2 else QColor("#ECE8F7"))
             else:
                 p.fillRect(r, QColor(*self.bg))
         if self._img is not None and not self._img.isNull():
@@ -276,7 +283,7 @@ def color_chip(color, selected: bool, cb) -> QToolButton:
     border = f"3px solid {ACCENT2}" if selected else f"1px solid {LINE}"
     if color is None:
         b.setText("▦")
-        b.setStyleSheet(f"QToolButton{{border-radius:17px;border:{border};background:#222540;color:{MUTED};font-size:14pt;}}")
+        b.setStyleSheet(f"QToolButton{{border-radius:17px;border:{border};background:white;color:{MUTED};font-size:14pt;}}")
         b.setToolTip("ڕوون (بێ باکگراوند)")
     else:
         b.setStyleSheet(f"QToolButton{{border-radius:17px;border:{border};background:rgb{color};}}")
@@ -308,7 +315,7 @@ class Tile(DragSource, QFrame):
     undo = Signal(object)
     context = Signal(object, QPoint)
 
-    SIZE = 212
+    SIZE = 280
     RADIUS = 16
 
     def __init__(self, r: core.ImageResult, state: TileState):
@@ -396,7 +403,7 @@ class Tile(DragSource, QFrame):
             c = 14
             for y in range(0, S, c):
                 for x in range(0, S, c):
-                    p.fillRect(x, y, c, c, QColor("#2A2E4C") if (x // c + y // c) % 2 else QColor("#20233D"))
+                    p.fillRect(x, y, c, c, QColor("#FFFFFF") if (x // c + y // c) % 2 else QColor("#ECE8F7"))
             img = st.thumb
             sz = img.size().scaled(S - 16, S - 34, Qt.KeepAspectRatio)
             p.drawImage(QRect((S - sz.width()) // 2, 8 + (S - 34 - sz.height()) // 2, sz.width(), sz.height()), img)
@@ -405,16 +412,19 @@ class Tile(DragSource, QFrame):
             p.drawPixmap(0, 0, pm, (pm.width() - S) // 2, (pm.height() - S) // 2, S, S)
         else:
             g = QLinearGradient(0, 0, S, S)
-            g.setColorAt(0, QColor("#1D2036"))
-            g.setColorAt(1, QColor("#262A4A"))
+            g.setColorAt(0, QColor("#EFEBFF"))
+            g.setColorAt(1, QColor("#FCEAF3"))
             p.fillRect(0, 0, S, S, g)
             p.setPen(QColor(MUTED))
             p.drawText(QRect(0, 0, S, S), Qt.AlignCenter, "…")
-        # شریتی خوارەوە
-        g = QLinearGradient(0, S - 60, 0, S)
-        g.setColorAt(0, QColor(0, 0, 0, 0))
-        g.setColorAt(1, QColor(8, 8, 18, 215))
-        p.fillRect(0, S - 60, S, 60, g)
+        # شریتی خوارەوە (بۆ وێنەی تەواوبوو: شریتی سپی)
+        if st.status == "DONE":
+            p.fillRect(0, S - 30, S, 30, QColor(255, 255, 255, 235))
+        else:
+            g = QLinearGradient(0, S - 60, 0, S)
+            g.setColorAt(0, QColor(0, 0, 0, 0))
+            g.setColorAt(1, QColor(8, 8, 18, 215))
+            p.fillRect(0, S - 60, S, 60, g)
         f = QFont(self.font())
         f.setPointSizeF(8.8)
         f.setBold(True)
@@ -428,7 +438,7 @@ class Tile(DragSource, QFrame):
         else:
             label = ""
         if label:
-            p.drawText(QRect(10, S - 26, S - 20, 20), Qt.AlignVCenter | Qt.AlignLeft, label)
+            p.drawText(QRect(10, S - 25, S - 20, 20), Qt.AlignVCenter | Qt.AlignLeft, label)
         # دۆخی کارکردن
         if st.status in ("WAITING", "WORKING", "ERROR"):
             p.fillRect(0, 0, S, S, QColor(10, 10, 24, 175 if st.status != "ERROR" else 140))
@@ -672,7 +682,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"داگرتن و لابردنی باکگراوند — BgRemover {core.VERSION}")
+        self.setWindowTitle(f"{APP_TITLE} {core.VERSION} — گەڕان و لابردنی باکگراوند")
         self.setLayoutDirection(Qt.RightToLeft)
         self.resize(1360, 860)
         self.settings = core.Settings.load()
@@ -750,7 +760,7 @@ class MainWindow(QMainWindow):
         hl.addWidget(logo)
         tbox = QVBoxLayout()
         tbox.setSpacing(0)
-        t1 = QLabel("BgRemover")
+        t1 = QLabel(APP_TITLE)
         t1.setObjectName("appTitle")
         t2 = QLabel("گەڕان · لابردنی باکگراوند · Upscale بە AI")
         t2.setObjectName("appSub")
@@ -1098,7 +1108,7 @@ class MainWindow(QMainWindow):
         try:
             b = core.http_get(url, timeout=30)
             im = Image.open(io.BytesIO(b))
-            im.thumbnail((360, 360))
+            im.thumbnail((560, 560))
             self.thumb_ready.emit(url, pil_to_qimage(im))
         except Exception:  # noqa: BLE001
             pass
@@ -1261,7 +1271,7 @@ class MainWindow(QMainWindow):
             of = d / f"{h}_orig.{core.sniff_ext(b) or 'png'}"
             of.write_bytes(b)
             st.file, st.orig, st.size, st.enhanced = str(f), str(of), out.size, enhanced
-            st.thumb = pil_to_qimage(thumb(out, 420))
+            st.thumb = pil_to_qimage(thumb(out, 560))
             st.status, st.msg = "DONE", ""
         except Exception as e:  # noqa: BLE001
             st.status, st.msg = "ERROR", (str(e) or "هەڵە")[:50]
@@ -2052,20 +2062,28 @@ def unique(p: Path) -> Path:
 
 
 def make_icon() -> QIcon:
+    from PySide6.QtGui import QLinearGradient, QFont
     pm = QPixmap(256, 256)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
     p.setRenderHint(QPainter.Antialiasing)
-    from PySide6.QtGui import QLinearGradient
+    p.setRenderHint(QPainter.TextAntialiasing)
     g = QLinearGradient(0, 0, 256, 256)
     g.setColorAt(0, QColor(ACCENT))
     g.setColorAt(1, QColor(ACCENT2))
     p.setBrush(QBrush(g))
     p.setPen(Qt.NoPen)
-    p.drawRoundedRect(8, 8, 240, 240, 56, 56)
-    p.setBrush(QBrush(QColor("white")))
-    p.drawEllipse(88, 46, 80, 80)
-    p.drawRoundedRect(58, 136, 140, 90, 60, 60)
+    p.drawRoundedRect(8, 8, 240, 240, 60, 60)
+    f = QFont("Segoe UI")
+    f.setPixelSize(118)
+    f.setWeight(QFont.Black)
+    p.setFont(f)
+    p.setPen(QColor("white"))
+    p.drawText(QRect(0, 0, 256, 236), Qt.AlignCenter, "SG")
+    # شریتی بچووکی «گەڕان» لە خوارەوە
+    p.setBrush(QBrush(QColor(255, 255, 255, 220)))
+    p.setPen(Qt.NoPen)
+    p.drawRoundedRect(78, 186, 100, 14, 7, 7)
     p.end()
     return QIcon(pm)
 
@@ -2097,24 +2115,24 @@ def main():
         except Exception:  # noqa: BLE001
             pass
     app = QApplication(sys.argv)
-    app.setApplicationName(core.APP_NAME)
+    app.setApplicationName(APP_TITLE)
     app.setLayoutDirection(Qt.RightToLeft)
     if sys.platform == "win32":
         f = app.font()
         f.setFamily("Segoe UI")
         app.setFont(f)
-    # ڕووکاری تاریکی تایبەت (بەبێ گوێدانە ڕێکخستنی ویندۆز، هەموو ڕەنگەکان دیاریکراون)
+    # ڕووکاری ڕووناکی تایبەت (بەبێ گوێدانە ڕێکخستنی ویندۆز، هەموو ڕەنگەکان دیاریکراون)
     app.setStyle("Fusion")
     from PySide6.QtGui import QPalette
     pal = QPalette()
     for role, col in [(QPalette.Window, BG), (QPalette.WindowText, TEXT),
-                      (QPalette.Base, "#12142A"), (QPalette.AlternateBase, CARD),
+                      (QPalette.Base, "#FFFFFF"), (QPalette.AlternateBase, CARD),
                       (QPalette.Text, TEXT), (QPalette.Button, CARD2),
                       (QPalette.ButtonText, TEXT), (QPalette.ToolTipBase, CARD2),
-                      (QPalette.ToolTipText, "#FFFFFF"), (QPalette.PlaceholderText, "#6E739C"),
+                      (QPalette.ToolTipText, TEXT), (QPalette.PlaceholderText, "#9A97B5"),
                       (QPalette.Highlight, ACCENT), (QPalette.HighlightedText, "#FFFFFF"),
-                      (QPalette.Light, "#3A3F6A"), (QPalette.Mid, LINE), (QPalette.Dark, "#0A0B14"),
-                      (QPalette.Shadow, "#000000"), (QPalette.BrightText, "#FFFFFF"), (QPalette.Link, ACCENT2)]:
+                      (QPalette.Light, "#FFFFFF"), (QPalette.Mid, LINE), (QPalette.Dark, "#CFC8EA"),
+                      (QPalette.Shadow, "#B8B2D6"), (QPalette.BrightText, TEXT), (QPalette.Link, ACCENT2)]:
         pal.setColor(role, QColor(col))
     app.setPalette(pal)
     app.setStyleSheet(STYLE)
