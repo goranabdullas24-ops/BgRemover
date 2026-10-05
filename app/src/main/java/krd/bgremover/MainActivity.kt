@@ -247,7 +247,7 @@ fun App(vm: MainViewModel = viewModel()) {
                     modifier = Modifier.fillMaxWidth().height(48.dp)
                 ) {
                     Icon(Icons.Default.AutoAwesome, null); Spacer(Modifier.width(8.dp))
-                    Text("Upscale ی وێنەیەک لە گاڵەری (×2 / ×4)")
+                    Text("Upscale ی وێنەیەک لە گاڵەری", maxLines = 1)
                 }
             }
 
@@ -403,7 +403,7 @@ fun App(vm: MainViewModel = viewModel()) {
                         } else {
                             OutlinedButton(onClick = vm::inplaceAll, modifier = Modifier.weight(1f)) {
                                 Icon(Icons.Default.AutoFixHigh, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp))
-                                Text("لابردنی هەموو", maxLines = 1)
+                                Text("هەمووی", maxLines = 1)
                             }
                             OutlinedButton(onClick = { vm.startSelect(null) }, modifier = Modifier.weight(1f)) {
                                 Icon(Icons.Default.Checklist, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp))
