@@ -45,3 +45,4 @@ for i, r in enumerate(items[:14]):
         print("ok", i, r.full_url[:100])
     except Exception as e:
         print("fail", i, e)
+# rerun
