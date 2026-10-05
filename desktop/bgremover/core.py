@@ -39,7 +39,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "2.2"
+VERSION = "2.3"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 
@@ -473,12 +473,15 @@ def person_instances(im: Image.Image, progress: ProgressFn = _noop, conf: float 
         canvas.paste(im.resize((nw, nh), Image.BILINEAR), (px, py))
         x = (np.asarray(canvas, np.float32) / 255.0).transpose(2, 0, 1)[None]
         out0, protos = s.run(None, {s.get_inputs()[0].name: x})
-        pred = out0[0].T                       # 8400 × 116
-        scores = pred[:, 4]                    # کلاسی 0 = مرۆڤ
+        pred_all = out0[0].T                   # 8400 × 116
+        scores = pred_all[:, 4]                # کلاسی 0 = مرۆڤ
         keep = scores > conf
         if not keep.any():
             return []
-        pred, scores = pred[keep], scores[keep]
+        pred, scores = pred_all[keep], scores[keep]
+        # کلاسی 27 = بۆینباخ (tie): YOLO بە جیا دەیبینێت، بۆیە دەیخەینەوە سەر کەسەکە
+        tie_s = pred_all[:, 4 + 27]
+        ties = pred_all[tie_s > 0.2]
         boxes = pred[:, :4].copy()             # cx, cy, w, h
         xyxy = np.stack([boxes[:, 0] - boxes[:, 2] / 2, boxes[:, 1] - boxes[:, 3] / 2,
                          boxes[:, 0] + boxes[:, 2] / 2, boxes[:, 1] + boxes[:, 3] / 2], 1)
@@ -494,6 +497,14 @@ def person_instances(im: Image.Image, progress: ProgressFn = _noop, conf: float 
             iou = inter / (area(xyxy[[i]]) + area(xyxy[order[1:]]) - inter + 1e-6)
             order = order[1:][iou < 0.5]
         P = protos[0].reshape(32, -1)          # 32 × 25600
+        tie_masks = []
+        for t in ties[np.argsort(-ties[:, 4 + 27])][:6]:
+            tm = 1 / (1 + np.exp(-(t[84:] @ P)))
+            tm = tm.reshape(160, 160)
+            cx, cy, bw_, bh_ = t[:4] / 4.0
+            yy, xx = np.mgrid[:160, :160]
+            tm = tm * ((xx >= cx - bw_ * 0.6) & (xx <= cx + bw_ * 0.6) & (yy >= cy - bh_ * 0.6) & (yy <= cy + bh_ * 0.6))
+            tie_masks.append((tm, (t[0], t[1])))
         res = []
         for i in chosen[:12]:
             m = 1 / (1 + np.exp(-(pred[i, 84:] @ P)))
@@ -505,6 +516,12 @@ def person_instances(im: Image.Image, progress: ProgressFn = _noop, conf: float 
             b = b + np.array([-0.15 * bw, -0.08 * bh, 0.15 * bw, 0.08 * bh])
             yy, xx = np.mgrid[:160, :160]
             m = m * ((xx >= b[0]) & (xx <= b[2]) & (yy >= b[1]) & (yy <= b[3]))
+            # بۆینباخ ئەگەر ناوەڕاستەکەی لەناو box ی ئەم کەسەدا بێت → بەشێکە لە کەسەکە
+            for tm, (tcx, tcy) in tie_masks:
+                if xyxy[i, 0] <= tcx <= xyxy[i, 2] and xyxy[i, 1] <= tcy <= xyxy[i, 3]:
+                    m = np.maximum(m, tm)
+            # کونەکانی ناو ماسکی کەسەکە (جلوبەرگ) پڕ دەکرێنەوە
+            m = np.maximum(m, nd.binary_fill_holes(m > 0.5).astype(np.float32))
             # لابردنی padding و گەڕاندنەوە بۆ قەبارەی وێنە
             mi = Image.fromarray((m * 255).astype(np.uint8)).resize((S, S), Image.BILINEAR)
             mi = mi.crop((px, py, px + nw, py + nh)).resize((w, h), Image.BILINEAR)
