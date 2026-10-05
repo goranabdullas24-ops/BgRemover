@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
@@ -52,7 +53,37 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private val Purple = Color(0xFF5A5A96)
+// ── ڕووکار: تێمی تاریکی شەو + ڕەنگی وەنەوشەیی/پەمەیی (وەک بەرنامەی کۆمپیوتەر) ──
+private val Bg = Color(0xFF0E0F1A)
+private val SurfaceC = Color(0xFF161829)
+private val CardC = Color(0xFF1D2036)
+private val Card2 = Color(0xFF252946)
+private val LineC = Color(0xFF30355A)
+private val TextC = Color(0xFFECEEFF)
+private val Muted = Color(0xFF9BA1C9)
+private val Accent = Color(0xFF8B6CFF)
+private val Accent2 = Color(0xFFFF5FA2)
+private val OkC = Color(0xFF3DDC97)
+private val ErrC = Color(0xFFFF6B6B)
+private val Purple = Accent
+private val Grad = Brush.linearGradient(listOf(Accent, Accent2))
+
+private fun dims(w: Int, h: Int) = "\u200e${w}×${h}\u200e"
+
+private val AppColors = darkColorScheme(
+    primary = Accent, onPrimary = Color.White,
+    primaryContainer = Card2, onPrimaryContainer = Color.White,
+    secondary = Accent2, onSecondary = Color.White,
+    secondaryContainer = Card2, onSecondaryContainer = Color.White,
+    tertiary = OkC,
+    background = Bg, onBackground = TextC,
+    surface = SurfaceC, onSurface = TextC,
+    surfaceVariant = CardC, onSurfaceVariant = Muted,
+    surfaceContainer = CardC, surfaceContainerHigh = Card2, surfaceContainerHighest = Card2,
+    surfaceContainerLow = SurfaceC, surfaceContainerLowest = Bg,
+    outline = LineC, outlineVariant = LineC,
+    error = ErrC, inverseSurface = TextC, inverseOnSurface = Bg
+)
 
 class MainActivity : ComponentActivity() {
     private val vm: MainViewModel by viewModels()
@@ -63,7 +94,7 @@ class MainActivity : ComponentActivity() {
         vm.start(restore = savedInstanceState?.getBoolean(KEEP_STATE) == true)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme(colorScheme = lightColorScheme(primary = Purple, secondary = Purple)) {
+            MaterialTheme(colorScheme = AppColors) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     App(vm)
                 }
@@ -129,15 +160,31 @@ fun App(vm: MainViewModel = viewModel()) {
     }
 
     Scaffold(
+        containerColor = Bg,
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("داگرتن و لابردنی باکگراوند") },
-                actions = {
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Default.Settings, contentDescription = "ڕێکخستن")
-                    }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.horizontalGradient(listOf(Color(0xFF1A1640), Color(0xFF2A1638))))
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Box(
+                    Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(Grad),
+                    contentAlignment = Alignment.Center
+                ) { Icon(Icons.Default.AutoFixHigh, null, tint = Color.White) }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("BgRemover", color = Color.White, fontWeight = FontWeight.ExtraBold,
+                        style = MaterialTheme.typography.titleLarge)
+                    Text("گەڕان · لابردنی باکگراوند · Upscale بە AI", color = Color(0xFFC9C2FF),
+                        style = MaterialTheme.typography.labelMedium)
                 }
-            )
+                IconButton(onClick = { showSettings = true }) {
+                    Icon(Icons.Default.Settings, contentDescription = "ڕێکخستن", tint = Color.White)
+                }
+            }
         },
         snackbarHost = { SnackbarHost(snack) }
     ) { pad ->
@@ -167,15 +214,12 @@ fun App(vm: MainViewModel = viewModel()) {
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Button(
-                onClick = { focus.clearFocus(); vm.submit() },
+            GradientButton(
+                text = "گەڕان و داگرتنی وێنە",
+                icon = Icons.Default.ImageSearch,
                 enabled = vm.query.isNotBlank() && vm.busy == null,
-                modifier = Modifier.fillMaxWidth().height(52.dp)
-            ) {
-                Icon(Icons.Default.ImageSearch, null)
-                Spacer(Modifier.width(8.dp))
-                Text("گەڕان و داگرتنی وێنە")
-            }
+                modifier = Modifier.fillMaxWidth().height(54.dp)
+            ) { focus.clearFocus(); vm.submit() }
 
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(
@@ -238,11 +282,11 @@ fun App(vm: MainViewModel = viewModel()) {
             }
 
             vm.original?.let { bmp ->
-                SectionCard("وێنەی سەرەکی — ${bmp.width}×${bmp.height} پیکسڵ" + if (vm.upscaled) "" else "") {
+                SectionCard("وێنەی سەرەکی — ${dims(bmp.width, bmp.height)} پیکسڵ" + if (vm.upscaled) "" else "") {
                     if (vm.lowQuality) {
                         Text(
                             "⚠ ئەم ماڵپەڕە ڕێگەی بە داگرتنی وێنە ئەسڵییەکە نەدا؛ تەنها وێنە بچووکەکەی بەردەستە. وێنەیەکی تر هەڵبژێرە بۆ کوالیتی باشتر.",
-                            color = Color(0xFFD93025),
+                            color = ErrC,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(bottom = 6.dp)
                         )
@@ -276,7 +320,7 @@ fun App(vm: MainViewModel = viewModel()) {
             UpscaleSection(vm, scope, upscaleLauncher)
 
             vm.cutout?.let { cut ->
-                SectionCard("ئەنجام — بێ باکگراوند (${cut.width}×${cut.height})" + if (vm.upscaled) " ✨ Upscale" else "") {
+                SectionCard("ئەنجام — بێ باکگراوند (${dims(cut.width, cut.height)})" + if (vm.upscaled) " ✨ Upscale" else "") {
                     val img = remember(cut) { cut.asImageBitmap() }
                     val bg = vm.bgColor
                     Box(
@@ -338,11 +382,16 @@ fun App(vm: MainViewModel = viewModel()) {
                         enabled = vm.busy == null,
                         modifier = Modifier.align(Alignment.CenterHorizontally)
                     ) { Text("دووبارە لابردنەوە") }
+                    TextButton(
+                        onClick = vm::closeEditor,
+                        enabled = vm.busy == null,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    ) { Text("✕  داخستن") }
                 }
             }
             if (vm.results.isNotEmpty()) {
                 val title = if (vm.selectMode) "${vm.selected.size} وێنە هەڵبژێردراوە"
-                            else "${vm.results.size} وێنە — ✨ لابردنی باکگراوند، ⬇ داگرتن، ڕاگرتن بۆ چەندان"
+                            else "${vm.results.size} وێنە · ✨ لابردن لە شوێنی خۆی · ⬇ داگرتن · 2× Upscale"
                 SectionCard(title) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -352,98 +401,34 @@ fun App(vm: MainViewModel = viewModel()) {
                             OutlinedButton(onClick = vm::selectAll, modifier = Modifier.weight(1f)) { Text("هەمووی") }
                             OutlinedButton(onClick = vm::cancelSelect, modifier = Modifier.weight(1f)) { Text("هەڵوەشاندنەوە") }
                         } else {
-                            OutlinedButton(onClick = { vm.startSelect(null) }, modifier = Modifier.fillMaxWidth()) {
-                                Icon(Icons.Default.Checklist, null); Spacer(Modifier.width(6.dp))
-                                Text("هەڵبژاردنی چەند وێنەیەک")
+                            OutlinedButton(onClick = vm::inplaceAll, modifier = Modifier.weight(1f)) {
+                                Icon(Icons.Default.AutoFixHigh, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp))
+                                Text("لابردنی هەموو", maxLines = 1)
+                            }
+                            OutlinedButton(onClick = { vm.startSelect(null) }, modifier = Modifier.weight(1f)) {
+                                Icon(Icons.Default.Checklist, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp))
+                                Text("هەڵبژاردن", maxLines = 1)
                             }
                         }
                     }
-                    vm.results.chunked(3).forEach { row ->
+                    val nDone = vm.doneCount
+                    if (nDone > 0 && !vm.selectMode) {
+                        GradientButton(
+                            text = "پاشەکەوتی $nDone وێنەی ئامادە",
+                            icon = Icons.Default.Save,
+                            modifier = Modifier.fillMaxWidth().height(46.dp).padding(bottom = 4.dp)
+                        ) { vm.saveAllInplace() }
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    vm.results.chunked(2).forEach { row ->
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.padding(bottom = 6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.padding(bottom = 10.dp)
                         ) {
                             row.forEach { item ->
-                                val sel = item.fullUrl in vm.selected
-                                Box(
-                                    Modifier
-                                        .weight(1f)
-                                        .aspectRatio(1f)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(Color(0xFFEDEDF4))
-                                        .border(
-                                            if (sel) 3.dp else 0.dp,
-                                            if (sel) Purple else Color.Transparent,
-                                            RoundedCornerShape(10.dp)
-                                        )
-                                        .combinedClickable(
-                                            onClick = {
-                                                if (vm.selectMode) vm.toggleSelect(item)
-                                                else if (vm.busy == null) vm.pick(item)
-                                            },
-                                            onLongClick = { vm.startSelect(item) }
-                                        )
-                                ) {
-                                    AsyncImage(
-                                        model = item.thumbUrl,
-                                        contentDescription = item.title,
-                                        imageLoader = loader,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                    if (item.width > 0 && item.height > 0) {
-                                        Text(
-                                            "${item.width}×${item.height}",
-                                            color = Color.White,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            modifier = Modifier
-                                                .align(Alignment.BottomStart)
-                                                .padding(3.dp)
-                                                .background(Color(0x99000000), RoundedCornerShape(4.dp))
-                                                .padding(horizontal = 4.dp, vertical = 1.dp)
-                                        )
-                                    }
-                                    if (!vm.selectMode) {
-                                        // ئایکۆنەکانی سەر هەر وێنەیەک
-                                        Column(
-                                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                                            modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)
-                                        ) {
-                                            TileIcon(
-                                                icon = Icons.Default.AutoFixHigh,
-                                                label = "لابردنی باکگراوند",
-                                                enabled = vm.busy == null
-                                            ) { vm.removeOne(item) }
-                                            TileIcon(
-                                                icon = Icons.Default.Download,
-                                                label = "داگرتن",
-                                                loading = item.fullUrl in vm.downloading
-                                            ) { vm.downloadOne(item) }
-                                        }
-                                        // Upscale ×2 لە گۆشەی خوارەوە
-                                        Box(Modifier.align(Alignment.BottomEnd).padding(4.dp)) {
-                                            TileIcon(
-                                                icon = Icons.Default.AutoAwesome,
-                                                label = "Upscale ×2",
-                                                text = "2×",
-                                                enabled = vm.busy == null
-                                            ) { vm.upscaleTile(item) }
-                                        }
-                                    }
-                                    if (vm.selectMode) {
-                                        Icon(
-                                            if (sel) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                                            null,
-                                            tint = if (sel) Purple else Color.White,
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .padding(4.dp)
-                                                .background(Color(0x66000000), CircleShape)
-                                        )
-                                    }
-                                }
+                                ResultTile(vm, item, loader, Modifier.weight(1f))
                             }
-                            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                            repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
                     if (vm.canLoadMore) {
@@ -463,7 +448,7 @@ fun App(vm: MainViewModel = viewModel()) {
                         Text(
                             "سەرچاوە: ویکیپیدیا، Wikimedia Commons، Openverse. بۆ ئەنجامی ڕاستەوخۆی گۆگڵ، کلیلی Serper لە ⚙ دابنێ.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Purple,
+                            color = Muted,
                             modifier = Modifier.padding(top = 6.dp)
                         )
                     }
@@ -518,7 +503,7 @@ private fun BatchSection(vm: MainViewModel, scope: kotlinx.coroutines.CoroutineS
                             BatchItem.Status.WAITING ->
                                 Icon(Icons.Default.HourglassEmpty, null, tint = Color.Gray)
                             BatchItem.Status.ERROR ->
-                                Text("✗\n${item.error ?: ""}", color = Color(0xFFD93025),
+                                Text("✗\n${item.error ?: ""}", color = ErrC,
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier.padding(4.dp))
                             BatchItem.Status.DONE -> {}
@@ -578,7 +563,8 @@ private fun TileIcon(
         modifier = Modifier
             .size(34.dp)
             .clip(CircleShape)
-            .background(Color(0xB3000000))
+            .background(Color(0xC80E0F1A))
+            .border(1.dp, Color(0x33FFFFFF), CircleShape)
             .clickable(enabled = enabled && !loading, onClick = onClick)
     ) {
         if (loading) {
@@ -609,14 +595,16 @@ private fun ColorRow(vm: MainViewModel) {
 @Composable
 private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF4F3F8)),
-        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = CardC, contentColor = TextC),
+        shape = RoundedCornerShape(20.dp),
+        border = BorderStroke(1.dp, LineC),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(14.dp)) {
             Text(
                 title,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
                 modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp)
             )
             content()
@@ -632,7 +620,7 @@ private fun ColorChip(color: Int?, selected: Boolean, onClick: () -> Unit) {
             .clip(CircleShape)
             .then(if (color == null) Modifier.checkerboard(6.dp) else Modifier.background(Color(color)))
             .border(
-                BorderStroke(if (selected) 3.dp else 1.dp, if (selected) Purple else Color.Gray),
+                BorderStroke(if (selected) 3.dp else 1.dp, if (selected) Accent2 else LineC),
                 CircleShape
             )
             .clickable(onClick = onClick)
@@ -641,11 +629,11 @@ private fun ColorChip(color: Int?, selected: Boolean, onClick: () -> Unit) {
 
 private fun Modifier.checkerboard(cell: Dp = 12.dp) = drawBehind {
     val s = cell.toPx()
-    drawRect(Color.White)
+    drawRect(Color(0xFF20233D))
     val cols = (size.width / s).toInt() + 1
     val rows = (size.height / s).toInt() + 1
     for (y in 0 until rows) for (x in 0 until cols) {
-        if ((x + y) % 2 == 0) drawRect(Color(0xFFDADADA), Offset(x * s, y * s), Size(s, s))
+        if ((x + y) % 2 == 0) drawRect(Color(0xFF2A2E4C), Offset(x * s, y * s), Size(s, s))
     }
 }
 
@@ -667,7 +655,7 @@ private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text("تەنها مرۆڤ", fontWeight = FontWeight.Medium)
-                        Text("شتی زیادە لادەبات و لەشی کەسەکە پڕ دەکات", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        Text("شتی زیادە لادەبات و لەشی کەسەکە پڕ دەکات", style = MaterialTheme.typography.bodySmall, color = Muted)
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -675,7 +663,15 @@ private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                     Spacer(Modifier.width(8.dp))
                     Column {
                         Text("تەنها کەسی سەرەکی (فۆکس)", fontWeight = FontWeight.Medium)
-                        Text("ئەگەر چەند کەس هەبن، تەنها ئەوەی فۆکسی لەسەرە دەمێنێتەوە", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                        Text("ئەگەر چەند کەس هەبن، تەنها ئەوەی فۆکسی لەسەرە دەمێنێتەوە", style = MaterialTheme.typography.bodySmall, color = Muted)
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = vm.autoEnhance, onCheckedChange = { vm.changeAutoEnhance(it) })
+                    Spacer(Modifier.width(8.dp))
+                    Column {
+                        Text("بەرزکردنەوەی کوالیتی دوای لابردن", fontWeight = FontWeight.Medium)
+                        Text("وێنەی بچووک (کەمتر لە 1800px) ×2 بە AI ڕوون دەکرێتەوە", style = MaterialTheme.typography.bodySmall, color = Muted)
                     }
                 }
                 HorizontalDivider()
@@ -726,7 +722,7 @@ private fun EngineOption(
         RadioButton(selected = selected == value, onClick = { onSelect(value) }, enabled = enabled)
         Column {
             Text(title, style = MaterialTheme.typography.bodyMedium)
-            Text(sub, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+            Text(sub, style = MaterialTheme.typography.bodySmall, color = Muted)
         }
     }
 }
@@ -755,7 +751,7 @@ private fun UpscaleSection(
                             val img = remember(bmp) { bmp.asImageBitmap() }
                             Image(img, null, modifier = Modifier.fillMaxWidth(), contentScale = ContentScale.Fit)
                         } else {
-                            Text("—", color = Color.Gray)
+                            Text("—", color = Muted)
                         }
                     }
                 }
@@ -798,6 +794,151 @@ private fun UpscaleSection(
             }, enabled = vm.busy == null) { Text("وێنەیەکی تر لە گاڵەری") }
             Spacer(Modifier.weight(1f))
             TextButton(onClick = vm::closeUpscale, enabled = vm.busy == null) { Text("داخستن") }
+        }
+    }
+}
+
+
+/** دوگمەی سەرەکی بە ڕەنگی تێکەڵ (وەنەوشەیی → پەمەیی). */
+@Composable
+private fun GradientButton(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (enabled) Grad else Brush.linearGradient(listOf(Card2, Card2)))
+            .clickable(enabled = enabled, onClick = onClick)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (icon != null) {
+                Icon(icon, null, tint = if (enabled) Color.White else Muted)
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(text, color = if (enabled) Color.White else Muted, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** خانەی وێنەیەکی گەڕان: لابردنی باکگراوند و بەرزکردنەوەی کوالیتی لە شوێنی خۆیدا. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ResultTile(vm: MainViewModel, item: ImageResult, loader: ImageLoader, modifier: Modifier) {
+    val st = vm.tiles[item.fullUrl] ?: MainViewModel.TileState()
+    val sel = item.fullUrl in vm.selected
+    val done = st.status == "DONE"
+    val working = st.status == "WAITING" || st.status == "WORKING"
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        modifier
+            .aspectRatio(1f)
+            .clip(shape)
+            .background(CardC)
+            .then(
+                when {
+                    sel -> Modifier.border(3.dp, Grad, shape)
+                    done -> Modifier.border(2.dp, OkC, shape)
+                    else -> Modifier.border(1.dp, LineC, shape)
+                }
+            )
+            .combinedClickable(
+                onClick = {
+                    when {
+                        vm.selectMode -> vm.toggleSelect(item)
+                        done -> vm.openInplace(item)
+                        vm.busy == null && !working -> vm.pick(item)
+                    }
+                },
+                onLongClick = { vm.startSelect(item) }
+            )
+    ) {
+        if (done && st.thumb != null) {
+            Box(Modifier.fillMaxSize().checkerboard(10.dp))
+            val img = remember(st.thumb) { st.thumb!!.asImageBitmap() }
+            Image(
+                img, null, contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize().padding(start = 6.dp, end = 6.dp, top = 6.dp, bottom = 26.dp)
+            )
+        } else {
+            AsyncImage(
+                model = item.thumbUrl,
+                contentDescription = item.title,
+                imageLoader = loader,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+        // شریتی خوارەوە
+        Box(
+            Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(48.dp)
+                .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xDD080812))))
+        )
+        val label = when {
+            done -> "✓ ${dims(st.w, st.h)}" + if (st.enhanced) "  ✨HD" else ""
+            item.width > 0 && item.height > 0 -> dims(item.width, item.height)
+            else -> ""
+        }
+        if (label.isNotEmpty()) {
+            Text(
+                label, color = if (done) OkC else Color.White, fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMedium, maxLines = 1,
+                modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 10.dp, vertical = 7.dp)
+            )
+        }
+        // دۆخی کارکردن
+        if (working || st.status == "ERROR") {
+            Column(
+                Modifier.fillMaxSize().background(Color(0xB80A0A18)).padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                when (st.status) {
+                    "WORKING" -> CircularProgressIndicator(Modifier.size(40.dp), color = Accent2, strokeWidth = 4.dp,
+                        trackColor = Color(0x338B6CFF))
+                    "WAITING" -> Icon(Icons.Default.HourglassEmpty, null, tint = Color.White)
+                    else -> Icon(Icons.Default.ErrorOutline, null, tint = ErrC)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    when (st.status) { "WAITING" -> "لە ڕیزدایە..."; "WORKING" -> st.msg.ifBlank { "کار دەکات..." }; else -> st.msg },
+                    color = if (st.status == "ERROR") ErrC else Color.White,
+                    style = MaterialTheme.typography.labelSmall,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    maxLines = 3
+                )
+                if (st.status == "ERROR") {
+                    TextButton(onClick = { vm.undoInplace(item); vm.inplace(item) }) { Text("دووبارە", color = Color.White) }
+                }
+            }
+        }
+        if (!vm.selectMode && !working) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.align(Alignment.TopEnd).padding(7.dp)
+            ) {
+                if (done) {
+                    TileIcon(Icons.Default.Save, "پاشەکەوت") { vm.saveInplace(item) }
+                    TileIcon(Icons.Default.OpenInFull, "کردنەوە") { vm.openInplace(item) }
+                    TileIcon(Icons.Default.Restore, "گەڕانەوە") { vm.undoInplace(item) }
+                } else {
+                    TileIcon(Icons.Default.AutoFixHigh, "لابردنی باکگراوند لێرە") { vm.inplace(item) }
+                    TileIcon(Icons.Default.Download, "داگرتن", loading = item.fullUrl in vm.downloading) { vm.downloadOne(item) }
+                    TileIcon(Icons.Default.AutoAwesome, "Upscale ×2", text = "2×", enabled = vm.busy == null) { vm.upscaleTile(item) }
+                }
+            }
+        }
+        if (vm.selectMode) {
+            Icon(
+                if (sel) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                null,
+                tint = if (sel) Accent2 else Color.White,
+                modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(Color(0x66000000), CircleShape)
+            )
         }
     }
 }

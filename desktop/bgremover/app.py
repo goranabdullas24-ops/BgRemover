@@ -28,29 +28,68 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QColorDial
 
 from . import core
 
-PURPLE = "#5A5A96"
+# ───────────────────────── ڕووکار (تێمی تاریکی شەو + ڕەنگی وەنەوشەیی/پەمەیی) ─────────────────────────
+BG = "#0E0F1A"          # باکگراوندی پەنجەرە
+SURFACE = "#161829"     # بەشەکان
+CARD = "#1D2036"        # کارتەکان
+CARD2 = "#252946"       # کارتی بەرزتر / hover
+LINE = "#30355A"        # هێڵ
+TEXT = "#ECEEFF"
+MUTED = "#9BA1C9"
+ACCENT = "#8B6CFF"      # وەنەوشەیی
+ACCENT2 = "#FF5FA2"     # پەمەیی
+OK = "#3DDC97"
+ERR = "#FF6B6B"
+PURPLE = ACCENT
+GRAD = f"qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {ACCENT}, stop:1 {ACCENT2})"
+GRAD_H = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #9C82FF, stop:1 #FF79B4)"
+
 STYLE = f"""
-QWidget {{ font-size: 10.5pt; color: #1C1B1F; }}
-QMainWindow, QScrollArea, QScrollArea > QWidget > QWidget {{ background: #FBF9FF; }}
-QFrame#card {{ background: #F1EFF7; border-radius: 14px; }}
-QLabel#cardTitle {{ font-weight: 600; font-size: 11pt; }}
-QPushButton {{ border: 1px solid #8C8AAE; border-radius: 16px; padding: 7px 12px; background: white; color: {PURPLE}; }}
-QPushButton:hover {{ background: #ECEBF7; }}
-QPushButton:disabled {{ color: #AAA; border-color: #DDD; }}
-QPushButton#primary {{ background: {PURPLE}; color: white; border: none; }}
-QPushButton#primary:hover {{ background: #4B4B85; }}
-QPushButton#primary:disabled {{ background: #B9B8D3; }}
-QLineEdit {{ border: 1.5px solid #8C8AAE; border-radius: 14px; padding: 8px 12px; background: white; color: #1C1B1F; font-size: 11.5pt; selection-background-color: {PURPLE}; selection-color: white; }}
-QLabel {{ color: #1C1B1F; background: transparent; }}
-QCheckBox, QRadioButton, QGroupBox {{ color: #1C1B1F; }}
-QMenu {{ background: white; color: #1C1B1F; }}
-QMenu::item:selected {{ background: #ECEBF7; }}
-QDialog {{ background: #FBF9FF; }}
-QLineEdit:focus {{ border-color: {PURPLE}; }}
-QToolButton#tileBtn {{ background: rgba(0,0,0,170); color: white; border-radius: 15px; font-size: 12pt; }}
-QToolButton#tileBtn:hover {{ background: {PURPLE}; }}
-QProgressBar {{ border: none; background: #E3E1EF; height: 6px; border-radius: 3px; }}
-QProgressBar::chunk {{ background: {PURPLE}; border-radius: 3px; }}
+QWidget {{ font-size: 10.5pt; color: {TEXT}; }}
+QMainWindow, QDialog {{ background: {BG}; }}
+QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
+QWidget#root {{ background: {BG}; }}
+QFrame#header {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #1A1640, stop:0.5 #1B1A3A, stop:1 #2A1638);
+                 border-radius: 18px; }}
+QLabel#appTitle {{ font-size: 17pt; font-weight: 800; color: white; }}
+QLabel#appSub {{ color: #C9C2FF; font-size: 9.5pt; }}
+QFrame#card {{ background: {CARD}; border-radius: 18px; border: 1px solid {LINE}; }}
+QFrame#panel {{ background: {SURFACE}; border-radius: 18px; border: 1px solid {LINE}; }}
+QLabel#cardTitle {{ font-weight: 700; font-size: 11.5pt; color: white; }}
+QLabel#muted {{ color: {MUTED}; }}
+QLabel {{ background: transparent; }}
+QPushButton {{ border: 1px solid {LINE}; border-radius: 12px; padding: 8px 14px; background: {CARD2}; color: {TEXT}; font-weight: 600; }}
+QPushButton:hover {{ background: #2F3458; border-color: {ACCENT}; }}
+QPushButton:pressed {{ background: #23264A; }}
+QPushButton:disabled {{ color: #5D6290; background: #1A1C30; border-color: #23264A; }}
+QPushButton#primary {{ background: {GRAD}; color: white; border: none; }}
+QPushButton#primary:hover {{ background: {GRAD_H}; }}
+QPushButton#primary:disabled {{ background: #3A3560; color: #8F8BB8; }}
+QPushButton#ghost {{ background: transparent; border: 1px solid {LINE}; color: {MUTED}; }}
+QPushButton#ghost:hover {{ color: white; border-color: {ACCENT}; }}
+QLineEdit {{ border: 1.5px solid {LINE}; border-radius: 14px; padding: 10px 16px; background: #12142A; color: white;
+             font-size: 12pt; selection-background-color: {ACCENT}; selection-color: white; }}
+QLineEdit:focus {{ border-color: {ACCENT}; background: #15183A; }}
+QCheckBox, QRadioButton {{ color: {TEXT}; spacing: 8px; }}
+QGroupBox {{ color: white; border: 1px solid {LINE}; border-radius: 12px; margin-top: 14px; padding: 10px; font-weight: 600; }}
+QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top right; padding: 0 8px; }}
+QMenu {{ background: {CARD}; color: {TEXT}; border: 1px solid {LINE}; border-radius: 10px; padding: 6px; }}
+QMenu::item {{ padding: 7px 18px; border-radius: 6px; }}
+QMenu::item:selected {{ background: {ACCENT}; color: white; }}
+QToolTip {{ background: {CARD2}; color: white; border: 1px solid {ACCENT}; padding: 5px; border-radius: 6px; }}
+QToolButton#tileBtn {{ background: rgba(14,15,26,190); color: white; border-radius: 17px; font-size: 12.5pt; font-weight: 700;
+                       border: 1px solid rgba(255,255,255,40); }}
+QToolButton#tileBtn:hover {{ background: {GRAD}; border: none; }}
+QToolButton#tileBtn:disabled {{ color: #777; }}
+QProgressBar {{ border: none; background: #24274A; height: 6px; border-radius: 3px; }}
+QProgressBar::chunk {{ background: {GRAD}; border-radius: 3px; }}
+QStatusBar {{ background: {SURFACE}; color: {MUTED}; border-top: 1px solid {LINE}; }}
+QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
+QScrollBar::handle:vertical {{ background: #3A3F6A; border-radius: 4px; min-height: 40px; }}
+QScrollBar::handle:vertical:hover {{ background: {ACCENT}; }}
+QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ background: none; height: 0; }}
+QSplitter::handle {{ background: transparent; }}
+QSplitter::handle:hover {{ background: {LINE}; border-radius: 3px; }}
 """
 
 COLORS: list[Optional[tuple[int, int, int]]] = [None, (255, 255, 255), (0, 0, 0), (30, 111, 217),
@@ -92,6 +131,11 @@ class Task(QRunnable):
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
             self.s.error.emit(str(e) or e.__class__.__name__)
+
+
+def dims(w, h) -> str:
+    """قەبارە بە ڕیزبەندی دروست لەناو نووسینی کوردی (RTL): 1920×1080"""
+    return f"\u200e{w}×{h}\u200e"
 
 
 def drag_dir() -> Path:
@@ -190,7 +234,7 @@ class Checker(DragSource, QLabel):
                 s = 12
                 for y in range(0, r.height(), s):
                     for x in range(0, r.width(), s):
-                        p.fillRect(x, y, s, s, QColor("#FFFFFF") if (x // s + y // s) % 2 else QColor("#DADADA"))
+                        p.fillRect(x, y, s, s, QColor("#2A2E4C") if (x // s + y // s) % 2 else QColor("#222540"))
             else:
                 p.fillRect(r, QColor(*self.bg))
         if self._img is not None and not self._img.isNull():
@@ -229,10 +273,10 @@ def color_chip(color, selected: bool, cb) -> QToolButton:
     b = QToolButton()
     b.setFixedSize(34, 34)
     b.setCursor(Qt.PointingHandCursor)
-    border = f"3px solid {PURPLE}" if selected else "1px solid #888"
+    border = f"3px solid {ACCENT2}" if selected else f"1px solid {LINE}"
     if color is None:
         b.setText("▦")
-        b.setStyleSheet(f"QToolButton{{border-radius:17px;border:{border};background:white;color:#999;font-size:14pt;}}")
+        b.setStyleSheet(f"QToolButton{{border-radius:17px;border:{border};background:#222540;color:{MUTED};font-size:14pt;}}")
         b.setToolTip("ڕوون (بێ باکگراوند)")
     else:
         b.setStyleSheet(f"QToolButton{{border-radius:17px;border:{border};background:rgb{color};}}")
@@ -242,93 +286,198 @@ def color_chip(color, selected: bool, cb) -> QToolButton:
 
 # ───────────────────────── خانەی وێنەی گەڕان ─────────────────────────
 
+@dataclass
+class TileState:
+    """دۆخی کارکردنی «لە شوێنی خۆی» بۆ هەر وێنەیەکی گەڕان."""
+    status: str = ""          # "" | WAITING | WORKING | DONE | ERROR
+    msg: str = ""
+    file: str = ""            # وێنەی بێ باکگراوند (PNG)
+    orig: str = ""            # وێنە ئەسڵییەکە
+    size: tuple = (0, 0)
+    enhanced: bool = False
+    thumb: Optional[QImage] = None
+
+
 class Tile(DragSource, QFrame):
     clicked = Signal(object, bool)   # result, ctrl
-    remove = Signal(object)
+    remove = Signal(object)          # ✨ لابردن لە شوێنی خۆی
     download = Signal(object)
     upscale = Signal(object)
+    save = Signal(object)
+    open_editor = Signal(object)
+    undo = Signal(object)
     context = Signal(object, QPoint)
 
-    SIZE = 140
+    SIZE = 212
+    RADIUS = 16
 
-    def __init__(self, r: core.ImageResult):
+    def __init__(self, r: core.ImageResult, state: TileState):
         super().__init__()
         self.r = r
+        self.state = state
+        self.pm: Optional[QPixmap] = None
+        self.hover = False
         self.setFixedSize(self.SIZE, self.SIZE)
         self.setCursor(Qt.PointingHandCursor)
-        self.setStyleSheet("Tile{background:#EDEDF4;border-radius:10px;}")
-        self.img = QLabel(self)
-        self.img.setGeometry(0, 0, self.SIZE, self.SIZE)
-        self.img.setAlignment(Qt.AlignCenter)
-        self.img.setStyleSheet("border-radius:10px;")
+        self.setAttribute(Qt.WA_Hover, True)
         self.sel = False
         self.select_mode = False
-        self.size_lbl = QLabel(self)
-        if r.width and r.height:
-            self.size_lbl.setText(f"{r.width}×{r.height}")
-            self.size_lbl.setStyleSheet("background:rgba(0,0,0,150);color:white;border-radius:4px;padding:1px 4px;font-size:8.5pt;")
-            self.size_lbl.adjustSize()
-            self.size_lbl.move(4, self.SIZE - self.size_lbl.height() - 4)
-        else:
-            self.size_lbl.hide()
-        self.b_rm = QToolButton(self)
-        self.b_rm.setObjectName("tileBtn")
-        self.b_rm.setText("✨")
-        self.b_rm.setToolTip("لابردنی باکگراوند")
-        self.b_rm.setFixedSize(30, 30)
-        self.b_rm.clicked.connect(lambda: self.remove.emit(self.r))
-        self.b_dl = QToolButton(self)
-        self.b_dl.setObjectName("tileBtn")
-        self.b_dl.setText("⬇")
-        self.b_dl.setToolTip("داگرتن بەبێ لابردنی باکگراوند")
-        self.b_dl.setFixedSize(30, 30)
-        self.b_dl.clicked.connect(lambda: self.download.emit(self.r))
-        self.b_up = QToolButton(self)
-        self.b_up.setObjectName("tileBtn")
-        self.b_up.setText("2×")
-        self.b_up.setToolTip("Upscale ×2 بە AI")
-        self.b_up.setFixedSize(30, 30)
-        self.b_up.clicked.connect(lambda: self.upscale.emit(self.r))
-        self.check = QLabel(self)
-        self.check.setFixedSize(26, 26)
-        self.check.setAlignment(Qt.AlignCenter)
-        self._layout_buttons()
-        self.update_sel()
 
+        def mk(text, tip, sig):
+            b = QToolButton(self)
+            b.setObjectName("tileBtn")
+            b.setText(text)
+            b.setToolTip(tip)
+            b.setFixedSize(34, 34)
+            b.setCursor(Qt.PointingHandCursor)
+            b.clicked.connect(lambda: sig.emit(self.r))
+            return b
+        self.b_rm = mk("✨", "لابردنی باکگراوند لێرە (+ بەرزکردنەوەی کوالیتی)", self.remove)
+        self.b_dl = mk("⬇", "داگرتنی وێنەی ئەسڵی (بەبێ لابردن)", self.download)
+        self.b_up = mk("2×", "Upscale ×2 بە AI", self.upscale)
+        self.b_save = mk("💾", "پاشەکەوتی وێنەی بێ باکگراوند", self.save)
+        self.b_open = mk("⤢", "کردنەوە لە بەشی سەرەوە (ڕەنگ، Upscale...)", self.open_editor)
+        self.b_undo = mk("↺", "گەڕانەوە بۆ وێنە ئەسڵییەکە", self.undo)
+        self.refresh()
+
+    # ── ڕووکار ──
     def _layout_buttons(self):
-        # لە ڕاست بۆ چەپ دوگمەکان لە گۆشەی سەرەوەی چەپ دادەنرێن (وەک ئەندرۆید: TopEnd)
-        self.b_rm.move(5, 5)
-        self.b_dl.move(5, 40)
-        self.b_up.move(5, 75)
-        self.check.move(self.SIZE - 31, 5)
+        done = self.state.status == "DONE"
+        top = [self.b_save, self.b_open, self.b_undo] if done else [self.b_rm, self.b_dl, self.b_up]
+        for b in (self.b_rm, self.b_dl, self.b_up, self.b_save, self.b_open, self.b_undo):
+            b.setVisible(False)
+        if self.select_mode or self.state.status in ("WAITING", "WORKING"):
+            return
+        for i, b in enumerate(top):
+            b.move(8, 8 + i * 40)
+            b.setVisible(True)
+
+    def refresh(self):
+        self._layout_buttons()
+        tip = self.r.title or ""
+        if self.state.status == "DONE":
+            tip = "ڕایبکێشە ناو هەر بەرنامەیەک — کلیک بۆ کردنەوە"
+        self.setToolTip(tip)
+        self.update()
 
     def set_pixmap(self, pm: QPixmap):
-        self.img.setPixmap(pm.scaled(self.SIZE, self.SIZE, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
-                           .copy(0, 0, self.SIZE, self.SIZE))
+        self.pm = pm
+        self.update()
 
     def set_loading_dl(self, loading: bool):
         self.b_dl.setText("…" if loading else "⬇")
         self.b_dl.setEnabled(not loading)
 
     def update_sel(self):
-        self.b_rm.setVisible(not self.select_mode)
-        self.b_dl.setVisible(not self.select_mode)
-        self.b_up.setVisible(not self.select_mode)
-        self.check.setVisible(self.select_mode)
-        self.check.setText("✓" if self.sel else "")
-        self.check.setStyleSheet(
-            f"border-radius:13px;font-weight:bold;color:white;"
-            f"background:{PURPLE if self.sel else 'rgba(0,0,0,90)'};border:2px solid white;")
-        self.setStyleSheet(f"Tile{{background:#EDEDF4;border-radius:10px;border:{'3px solid ' + PURPLE if self.sel else 'none'};}}")
+        self._layout_buttons()
+        self.update()
+
+    def event(self, e):
+        from PySide6.QtCore import QEvent
+        if e.type() == QEvent.HoverEnter:
+            self.hover = True
+            self.update()
+        elif e.type() == QEvent.HoverLeave:
+            self.hover = False
+            self.update()
+        return super().event(e)
+
+    def paintEvent(self, _):
+        from PySide6.QtGui import QPainterPath, QLinearGradient, QPen, QFont
+        S, R = self.SIZE, self.RADIUS
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        path = QPainterPath()
+        path.addRoundedRect(1, 1, S - 2, S - 2, R, R)
+        p.setClipPath(path)
+        st = self.state
+        if st.status == "DONE" and st.thumb is not None:
+            c = 14
+            for y in range(0, S, c):
+                for x in range(0, S, c):
+                    p.fillRect(x, y, c, c, QColor("#2A2E4C") if (x // c + y // c) % 2 else QColor("#20233D"))
+            img = st.thumb
+            sz = img.size().scaled(S - 16, S - 34, Qt.KeepAspectRatio)
+            p.drawImage(QRect((S - sz.width()) // 2, 8 + (S - 34 - sz.height()) // 2, sz.width(), sz.height()), img)
+        elif self.pm is not None and not self.pm.isNull():
+            pm = self.pm.scaled(S, S, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            p.drawPixmap(0, 0, pm, (pm.width() - S) // 2, (pm.height() - S) // 2, S, S)
+        else:
+            g = QLinearGradient(0, 0, S, S)
+            g.setColorAt(0, QColor("#1D2036"))
+            g.setColorAt(1, QColor("#262A4A"))
+            p.fillRect(0, 0, S, S, g)
+            p.setPen(QColor(MUTED))
+            p.drawText(QRect(0, 0, S, S), Qt.AlignCenter, "…")
+        # شریتی خوارەوە
+        g = QLinearGradient(0, S - 60, 0, S)
+        g.setColorAt(0, QColor(0, 0, 0, 0))
+        g.setColorAt(1, QColor(8, 8, 18, 215))
+        p.fillRect(0, S - 60, S, 60, g)
+        f = QFont(self.font())
+        f.setPointSizeF(8.8)
+        f.setBold(True)
+        p.setFont(f)
+        if st.status == "DONE":
+            p.setPen(QColor(OK))
+            label = f"✓ {dims(st.size[0], st.size[1])}" + ("  ✨ HD" if st.enhanced else "  بێ باکگراوند")
+        elif self.r.width and self.r.height:
+            p.setPen(QColor("#E6E8FF"))
+            label = f"{dims(self.r.width, self.r.height)}"
+        else:
+            label = ""
+        if label:
+            p.drawText(QRect(10, S - 26, S - 20, 20), Qt.AlignVCenter | Qt.AlignLeft, label)
+        # دۆخی کارکردن
+        if st.status in ("WAITING", "WORKING", "ERROR"):
+            p.fillRect(0, 0, S, S, QColor(10, 10, 24, 175 if st.status != "ERROR" else 140))
+            if st.status == "WORKING":
+                ang = int((time.time() * 360) % 360) * 16
+                pen = QPen(QColor(ACCENT2), 5)
+                pen.setCapStyle(Qt.RoundCap)
+                p.setPen(pen)
+                p.drawArc(QRect(S // 2 - 24, S // 2 - 46, 48, 48), -ang, 100 * 16)
+                pen.setColor(QColor(ACCENT))
+                p.setPen(pen)
+                p.drawArc(QRect(S // 2 - 24, S // 2 - 46, 48, 48), -ang + 180 * 16, 100 * 16)
+            p.setPen(QColor("white") if st.status != "ERROR" else QColor(ERR))
+            f.setPointSizeF(9)
+            p.setFont(f)
+            txt = {"WAITING": "⏳ لە ڕیزدایە...", "WORKING": st.msg or "کار دەکات...",
+                   "ERROR": "✗ " + (st.msg or "هەڵە")}[st.status]
+            p.drawText(QRect(10, S // 2 + 8, S - 20, 60), Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap, txt)
+        p.setClipping(False)
+        # چوارچێوە
+        if self.sel or self.hover or st.status == "DONE":
+            gp = QLinearGradient(0, 0, S, S)
+            gp.setColorAt(0, QColor(ACCENT))
+            gp.setColorAt(1, QColor(ACCENT2))
+            w = 3 if self.sel else 2
+            col = QBrush(gp) if (self.sel or self.hover) else QBrush(QColor(OK))
+            p.setPen(QPen(col, w))
+            p.setBrush(Qt.NoBrush)
+            p.drawRoundedRect(QRect(1, 1, S - 2, S - 2), R, R)
+        if self.select_mode:
+            cr = QRect(S - 36, 8, 28, 28)
+            p.setPen(QPen(QColor("white"), 2))
+            p.setBrush(QBrush(QColor(ACCENT2)) if self.sel else QBrush(QColor(0, 0, 0, 110)))
+            p.drawEllipse(cr)
+            if self.sel:
+                p.drawText(cr, Qt.AlignCenter, "✓")
+        p.end()
 
     drag_request = None  # Callable[[ImageResult], Optional[Path]] — لە MainWindow دادەنرێت
 
     def drag_path(self):
+        if self.state.status == "DONE" and self.state.file:
+            return Path(self.state.file)
         return Tile.drag_request(self.r) if Tile.drag_request else None
 
     def drag_preview(self):
-        pm = self.img.pixmap()
-        return pm.toImage() if pm is not None and not pm.isNull() else None
+        if self.state.status == "DONE" and self.state.thumb is not None:
+            return self.state.thumb
+        return self.pm.toImage() if self.pm is not None and not self.pm.isNull() else None
 
     def mousePressEvent(self, e):
         self.ds_press(e)
@@ -352,9 +501,9 @@ class FlowGrid(QWidget):
     def __init__(self):
         super().__init__()
         self.grid = QGridLayout(self)
-        self.grid.setSpacing(8)
+        self.grid.setSpacing(14)
         self.grid.setContentsMargins(0, 0, 0, 0)
-        self.grid.setAlignment(Qt.AlignTop | Qt.AlignLeading)   # لە RTL = ڕاست
+        self.grid.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
         self.items: list[QWidget] = []
         self.cols = 3
 
@@ -370,7 +519,7 @@ class FlowGrid(QWidget):
         self.grid.addWidget(w, i // self.cols, i % self.cols)
 
     def relayout(self, width: int, cell: int):
-        cols = max(1, (width + 8) // (cell + 8))
+        cols = max(1, (width + 14) // (cell + 14))
         if cols == self.cols:
             return
         self.cols = cols
@@ -417,7 +566,7 @@ class BatchTile(DragSource, QFrame):
         st = self.item.status
         txt = {"WAITING": "⏳", "WORKING": "⚙️…", "ERROR": f"✗\n{self.item.error}", "DONE": ""}[st]
         self.lbl.setText(txt)
-        self.lbl.setStyleSheet("color:#D93025;font-size:9pt;background:rgba(255,255,255,170);" if st == "ERROR"
+        self.lbl.setStyleSheet(f"color:{ERR};font-size:9pt;background:rgba(14,15,26,190);" if st == "ERROR"
                                else "font-size:18pt;background:transparent;")
 
     def drag_path(self):
@@ -452,8 +601,11 @@ class SettingsDialog(QDialog):
         self.person.setChecked(s.person_only)
         self.focus = QCheckBox("تەنها کەسی سەرەکی (فۆکس) — ئەگەر چەند کەس هەبن")
         self.focus.setChecked(s.focus_only)
+        self.enh = QCheckBox("بەرزکردنەوەی کوالیتی دوای لابردن — وێنەی بچووک (کەمتر لە 1800px) ×2 بە AI ڕوون دەکرێتەوە")
+        self.enh.setChecked(s.auto_enhance)
         v.addWidget(self.person)
         v.addWidget(self.focus)
+        v.addWidget(self.enh)
 
         g = QGroupBox("شێوازی لابردنی باکگراوند")
         gv = QVBoxLayout(g)
@@ -501,6 +653,7 @@ class SettingsDialog(QDialog):
         s = self.s
         s.person_only = self.person.isChecked()
         s.focus_only = self.focus.isChecked()
+        s.auto_enhance = self.enh.isChecked()
         s.removebg_key = self.rb_key.text().strip()
         s.engine = "removebg" if self.r_rb.isChecked() and s.removebg_key else "isnet"
         s.serper_key = self.serper.text().strip()
@@ -512,6 +665,7 @@ class SettingsDialog(QDialog):
 
 class MainWindow(QMainWindow):
     thumb_ready = Signal(str, QImage)
+    tile_changed = Signal(str)
     dl_done = Signal(str, bool, str)
     batch_update = Signal(int)
     batch_finished = Signal(str)
@@ -549,6 +703,11 @@ class MainWindow(QMainWindow):
         self.batch_stop = False
         self.next_id = 1
         self.downloading: set[str] = set()
+        self.tstate: dict[str, TileState] = {}
+        self.inplace_pool = ThreadPoolExecutor(1)    # مۆدێلەکان قورسن → یەک بە یەک
+        self.spin = QTimer(self)
+        self.spin.setInterval(40)
+        self.spin.timeout.connect(self._spin_tick)
         self.dl_pool = ThreadPoolExecutor(3)
         self._tile_drag_cache: dict[str, Path] = {}
         Tile.drag_request = self._drag_tile_path
@@ -560,6 +719,7 @@ class MainWindow(QMainWindow):
         self._bridge.progress.connect(lambda m: self.set_busy(m))
         self._build()
         self.thumb_ready.connect(self._on_thumb)
+        self.tile_changed.connect(self._on_tile_changed, Qt.QueuedConnection)
         self.dl_done.connect(self._on_dl_done)
         self.batch_update.connect(self._refresh_batch_tile)
         self.batch_finished.connect(self._on_batch_finished)
@@ -573,27 +733,51 @@ class MainWindow(QMainWindow):
     # ───── ڕووکار ─────
     def _build(self):
         root = QWidget()
+        root.setObjectName("root")
         self.setCentralWidget(root)
         rv = QVBoxLayout(root)
-        rv.setContentsMargins(16, 12, 16, 8)
-        rv.setSpacing(10)
+        rv.setContentsMargins(18, 14, 18, 10)
+        rv.setSpacing(12)
 
-        # شریتی سەرەوە
-        top = QHBoxLayout()
+        # ── سەردێڕ: ناو + گەڕان ──
+        header = QFrame()
+        header.setObjectName("header")
+        hl = QHBoxLayout(header)
+        hl.setContentsMargins(18, 14, 18, 14)
+        hl.setSpacing(12)
+        logo = QLabel()
+        logo.setPixmap(make_icon().pixmap(44, 44))
+        hl.addWidget(logo)
+        tbox = QVBoxLayout()
+        tbox.setSpacing(0)
+        t1 = QLabel("BgRemover")
+        t1.setObjectName("appTitle")
+        t2 = QLabel("گەڕان · لابردنی باکگراوند · Upscale بە AI")
+        t2.setObjectName("appSub")
+        tbox.addWidget(t1)
+        tbox.addWidget(t2)
+        hl.addLayout(tbox)
+        hl.addSpacing(10)
         self.q = QLineEdit()
-        self.q.setPlaceholderText("ناو یان لینکی وێنە — بۆ نموونە: گوڵی نێرگز")
+        self.q.setPlaceholderText("🔍  ناوی کەس، شوێن یان هەر شتێک بنووسە... یان لینکی وێنە")
         self.q.returnPressed.connect(self.submit)
         self.q.setClearButtonEnabled(True)
-        top.addWidget(self.q, 1)
-        self.b_search = btn("🔍  گەڕان و داگرتنی وێنە", True, self.submit)
-        top.addWidget(self.b_search)
-        top.addWidget(btn("🖼  کردنەوەی وێنە (Ctrl+O)", cb=self.open_files))
-        top.addWidget(btn("📋  لکاندن (Ctrl+V)", cb=self.paste_image))
-        b_set = btn("⚙", cb=self.open_settings)
-        b_set.setToolTip("ڕێکخستن")
-        b_set.setFixedWidth(48)
-        top.addWidget(b_set)
-        rv.addLayout(top)
+        self.q.setMinimumHeight(46)
+        hl.addWidget(self.q, 1)
+        self.b_search = btn("گەڕان", True, self.submit)
+        self.b_search.setMinimumHeight(46)
+        self.b_search.setMinimumWidth(110)
+        hl.addWidget(self.b_search)
+        for text, tip, cb in (("🖼", "کردنەوەی وێنە لە کۆمپیوتەر (Ctrl+O)", self.open_files),
+                              ("📋", "لکاندنی وێنە (Ctrl+V)", self.paste_image),
+                              ("⚙", "ڕێکخستن", self.open_settings)):
+            b = btn(text, cb=cb)
+            b.setToolTip(tip)
+            b.setFixedSize(46, 46)
+            b.setStyleSheet("font-size:14pt;padding:0;")
+            hl.addWidget(b)
+        rv.addWidget(header)
+        self.top_header = header
 
         self.prog = QProgressBar()
         self.prog.setRange(0, 0)
@@ -601,7 +785,7 @@ class MainWindow(QMainWindow):
         self.prog.setFixedHeight(6)
         self.prog.hide()
         self.prog_lbl = QLabel("")
-        self.prog_lbl.setStyleSheet("color:#555;")
+        self.prog_lbl.setStyleSheet(f"color:{MUTED};")
         self.prog_lbl.hide()
         rv.addWidget(self.prog)
         rv.addWidget(self.prog_lbl)
@@ -669,7 +853,7 @@ class MainWindow(QMainWindow):
         self.orig_view.path_provider = self._drag_orig_path
         ov.addWidget(self.orig_view, 1)
         self.low_lbl = QLabel("⚠ ئەم ماڵپەڕە ڕێگەی بە داگرتنی وێنە ئەسڵییەکە نەدا؛ تەنها وێنە بچووکەکەی بەردەستە.")
-        self.low_lbl.setStyleSheet("color:#D93025;")
+        self.low_lbl.setStyleSheet(f"color:{ERR};")
         self.low_lbl.setWordWrap(True)
         self.low_lbl.hide()
         ov.addWidget(self.low_lbl)
@@ -697,6 +881,7 @@ class MainWindow(QMainWindow):
         rrow.addWidget(btn("💾  پاشەکەوت", True, self.save_result))
         rrow.addWidget(btn("📋  کۆپی", cb=self.copy_result))
         rrow.addWidget(btn("📂  فۆڵدەر", cb=self.open_save_dir))
+        rrow.addWidget(btn("✕  داخستن", cb=self.close_editor))
         resv.addLayout(rrow)
 
         pair.addWidget(self.orig_card, 1)
@@ -717,14 +902,14 @@ class MainWindow(QMainWindow):
             col = QVBoxLayout()
             t = QLabel(lbl)
             t.setAlignment(Qt.AlignCenter)
-            t.setStyleSheet("color:#555;")
+            t.setStyleSheet(f"color:{MUTED};")
             col.addWidget(t)
             col.addWidget(view, 1)
             urow.addLayout(col, 1)
         uv.addLayout(urow, 1)
         self.up_info = QLabel("")
         self.up_info.setWordWrap(True)
-        self.up_info.setStyleSheet("color:#555;")
+        self.up_info.setStyleSheet(f"color:{MUTED};")
         uv.addWidget(self.up_info)
         ubtn = QHBoxLayout()
         self.b_up2 = btn("2×  Upscale ×2", True, lambda: self.run_upscale(2))
@@ -749,15 +934,16 @@ class MainWindow(QMainWindow):
                            "✨ = لابردنی باکگراوند   ⬇ = داگرتن بە قەبارەی ئەسڵی   Ctrl+کلیک = هەڵبژاردنی چەند وێنەیەک\n"
                            "هەر وێنەیەک (ئەنجام یان گەڕان) ڕابکێشە ناو Photoshop، Premiere، Word یان هەر بەرنامەیەکی تر")
         self.hint.setAlignment(Qt.AlignCenter)
-        self.hint.setStyleSheet("color:#777;font-size:11.5pt;padding:14px;")
+        self.hint.setStyleSheet(f"color:{MUTED};font-size:11.5pt;padding:14px;")
         self.work_v.addWidget(self.hint)
         self.work_v.addStretch(1)
         split.addWidget(work_scroll)
 
         # ── لای چەپ: ئەنجامەکانی گەڕان ──
-        res_panel = QWidget()
+        res_panel = QFrame()
+        res_panel.setObjectName("panel")
         rp = QVBoxLayout(res_panel)
-        rp.setContentsMargins(0, 4, 0, 0)
+        rp.setContentsMargins(16, 12, 8, 8)
         self.res_head = QLabel("")
         self.res_head.setObjectName("cardTitle")
         self.res_head.setWordWrap(True)
@@ -765,9 +951,13 @@ class MainWindow(QMainWindow):
         hrow = QHBoxLayout()
         self.b_selmode = btn("☑  هەڵبژاردنی چەند وێنەیەک", cb=lambda: self.set_select_mode(not self.select_mode))
         self.b_selall = btn("هەمووی", cb=self.select_all)
+        self.b_rm_all = btn("✨  لابردنی باکگراوندی هەموو", cb=self.inplace_all)
+        self.b_save_done = btn("", True, self.save_all_inplace)
         hrow.addWidget(self.b_selmode)
         hrow.addWidget(self.b_selall)
+        hrow.addWidget(self.b_rm_all)
         hrow.addStretch(1)
+        hrow.addWidget(self.b_save_done)
         rp.addLayout(hrow)
         self.grid_scroll = QScrollArea()
         self.grid_scroll.setWidgetResizable(True)
@@ -783,7 +973,7 @@ class MainWindow(QMainWindow):
         gv.addWidget(self.b_more)
         self.src_lbl = QLabel("")
         self.src_lbl.setWordWrap(True)
-        self.src_lbl.setStyleSheet(f"color:{PURPLE};")
+        self.src_lbl.setStyleSheet(f"color:{MUTED};")
         gv.addWidget(self.src_lbl)
         gv.addStretch(1)
         self.grid_scroll.setWidget(gw)
@@ -885,14 +1075,18 @@ class MainWindow(QMainWindow):
         self.grid_scroll.verticalScrollBar().setValue(0)
 
     def _add_tile(self, r: core.ImageResult):
-        t = Tile(r)
+        st = self.tstate.setdefault(r.full_url, TileState())
+        t = Tile(r, st)
         t.select_mode = self.select_mode
         t.sel = r.full_url in self.selected
         t.update_sel()
         t.clicked.connect(self._tile_clicked)
-        t.remove.connect(lambda rr: self.pick(rr))
+        t.remove.connect(self.inplace)
         t.download.connect(self.download_one)
         t.upscale.connect(self.upscale_tile)
+        t.save.connect(self.save_inplace)
+        t.open_editor.connect(self.open_inplace)
+        t.undo.connect(self.undo_inplace)
         t.context.connect(self._tile_menu)
         self.grid.add(t)
         if r.thumb_url in self.thumb_cache:
@@ -921,13 +1115,22 @@ class MainWindow(QMainWindow):
             if not self.select_mode:
                 self.set_select_mode(True)
             self.toggle_select(r)
+        elif self.tstate.get(r.full_url, TileState()).status == "DONE":
+            self.open_inplace(r)
         elif not self.busy:
             self.pick(r)
 
     def _tile_menu(self, r, pos):
         m = QMenu(self)
         m.setLayoutDirection(Qt.RightToLeft)
-        m.addAction("✨  لابردنی باکگراوند", lambda: self.pick(r))
+        st = self.tstate.get(r.full_url, TileState())
+        if st.status == "DONE":
+            m.addAction("💾  پاشەکەوتی وێنەی بێ باکگراوند", lambda: self.save_inplace(r))
+            m.addAction("⤢  کردنەوە لە بەشی سەرەوە", lambda: self.open_inplace(r))
+            m.addAction("↺  گەڕانەوە بۆ ئەسڵی", lambda: self.undo_inplace(r))
+        else:
+            m.addAction("✨  لابردنی باکگراوند لێرە", lambda: self.inplace(r))
+        m.addAction("🖼  کردنەوە لە بەشی سەرەوە (لابردن + ڕەنگ)", lambda: self.pick(r))
         m.addAction("⬇  داگرتن بەبێ لابردنی باکگراوند", lambda: self.download_one(r))
         m.addAction("2×  Upscale ×2 بە AI", lambda: self.upscale_tile(r))
         m.addAction("☑  هەڵبژاردن", lambda: (self.set_select_mode(True), self.toggle_select(r)))
@@ -967,13 +1170,17 @@ class MainWindow(QMainWindow):
         if self.select_mode:
             self.res_head.setText(f"{len(self.selected)} وێنە هەڵبژێردراوە")
         elif has:
-            self.res_head.setText(f"{len(self.results)} وێنە — ✨ لابردنی باکگراوند، ⬇ داگرتن، Ctrl+کلیک بۆ چەندان، "
-                                  "ڕاکێشان بۆ ناو بەرنامەیەکی تر")
+            self.res_head.setText(f"{len(self.results)} وێنە  ·  ✨ لابردن لە شوێنی خۆی  ·  ⬇ داگرتن  ·  2× Upscale  ·  "
+                                  "ڕاکێشان بۆ بەرنامەکانی تر")
         else:
             self.res_head.setText("ئەنجامەکانی گەڕان لێرە دەردەکەون")
         self.b_selmode.setText("هەڵوەشاندنەوە" if self.select_mode else "☑  هەڵبژاردنی چەند وێنەیەک")
         self.b_selmode.setVisible(has)
         self.b_selall.setVisible(has and self.select_mode)
+        self.b_rm_all.setVisible(has and not self.select_mode)
+        ndone = sum(1 for r in self.results if self.tstate.get(r.full_url, TileState()).status == "DONE")
+        self.b_save_done.setText(f"💾  پاشەکەوتی {ndone} وێنەی ئامادە")
+        self.b_save_done.setVisible(ndone > 0)
         self.b_more.setVisible(has and self.can_more)
         self.src_lbl.setVisible(has and self.source == "free")
         self.src_lbl.setText("سەرچاوە: ویکیپیدیا، Wikimedia Commons، Openverse. بۆ ئەنجامی ڕاستەوخۆی گۆگڵ، کلیلی Serper لە ⚙ دابنێ.")
@@ -983,6 +1190,135 @@ class MainWindow(QMainWindow):
         self.b_sel_dl.setText(f"⬇  داگرتنی {n} وێنە بەبێ لابردنی باکگراوند")
         QTimer.singleShot(0, self._relayout)
         QTimer.singleShot(0, self._fit_split)
+
+    # ───── لابردنی باکگراوند «لە شوێنی خۆی» لەسەر هەر وێنەیەک ─────
+    def _tiles_for(self, url: str):
+        return [t for t in self.grid.items if t.r.full_url == url]
+
+    def _on_tile_changed(self, url: str):
+        for t in self._tiles_for(url):
+            t.refresh()
+        working = any(st.status in ("WAITING", "WORKING") for st in self.tstate.values())
+        if working and not self.spin.isActive():
+            self.spin.start()
+        elif not working:
+            self.spin.stop()
+        self._update_results_ui()
+
+    def _spin_tick(self):
+        for t in self.grid.items:
+            if t.state.status == "WORKING":
+                t.update()
+
+    def inplace(self, r: core.ImageResult):
+        st = self.tstate.setdefault(r.full_url, TileState())
+        if st.status in ("WAITING", "WORKING", "DONE"):
+            return
+        st.status, st.msg = "WAITING", ""
+        self.tile_changed.emit(r.full_url)
+        opts = self.cut_opts()
+        enhance = self.settings.auto_enhance
+        self.inplace_pool.submit(self._inplace_job, r, st, opts, enhance)
+
+    def inplace_all(self):
+        n = 0
+        for r in self.results:
+            if self.tstate.get(r.full_url, TileState()).status in ("", "ERROR"):
+                self.tstate.setdefault(r.full_url, TileState()).status = ""
+                self.inplace(r)
+                n += 1
+        self.message(f"{n} وێنە خرانە ڕیز")
+
+    def _inplace_job(self, r: core.ImageResult, st: TileState, opts, enhance: bool):
+        import hashlib
+        url = r.full_url
+        last = [0.0]
+
+        def prog(m: str):
+            st.msg = m.replace("داگرتنی مۆدێلی", "مۆدێل")[:48]
+            if time.time() - last[0] > 0.25:
+                last[0] = time.time()
+                self.tile_changed.emit(url)
+        try:
+            st.status = "WORKING"
+            prog("داگرتنی وێنە بە قەبارەی تەواو...")
+            self.tile_changed.emit(url)
+            b, _ = core.fetch_image_bytes(url, r.thumb_url, r.page_url)
+            src = core.open_image(b)
+            out, _ = core.remove_background(src, opts, prog)
+            enhanced = False
+            if enhance and max(out.size) < 1800:
+                try:
+                    out = core.upscale_image(out, 2, lambda m: prog(m.replace("Upscale ×2 بە AI", "بەرزکردنەوەی کوالیتی")))
+                    enhanced = True
+                except Exception:  # noqa: BLE001
+                    pass
+            d = core.data_dir() / "inplace"
+            d.mkdir(parents=True, exist_ok=True)
+            h = hashlib.md5(url.encode("utf-8")).hexdigest()[:16]
+            f = d / f"{h}.png"
+            out.save(f)
+            of = d / f"{h}_orig.{core.sniff_ext(b) or 'png'}"
+            of.write_bytes(b)
+            st.file, st.orig, st.size, st.enhanced = str(f), str(of), out.size, enhanced
+            st.thumb = pil_to_qimage(thumb(out, 420))
+            st.status, st.msg = "DONE", ""
+        except Exception as e:  # noqa: BLE001
+            st.status, st.msg = "ERROR", (str(e) or "هەڵە")[:50]
+        self.tile_changed.emit(url)
+
+    def _inplace_name(self, r: core.ImageResult) -> str:
+        return core.safe_filename(Path(urllib_unquote(r.full_url.split("?")[0])).stem or r.title or "image")
+
+    def save_inplace(self, r: core.ImageResult, quiet=False) -> Optional[Path]:
+        st = self.tstate.get(r.full_url)
+        if not st or st.status != "DONE":
+            return None
+        p = unique(self.save_dir() / f"{self._inplace_name(r)}_nobg.png")
+        try:
+            import shutil
+            shutil.copyfile(st.file, p)
+        except Exception as e:  # noqa: BLE001
+            self.message(f"پاشەکەوت سەرنەکەوت: {e}")
+            return None
+        if not quiet:
+            self.message(f"✔ پاشەکەوت کرا: {p}", 10000)
+            if not self.dl_shown_folder:
+                self.dl_shown_folder = True
+                reveal_in_folder(p)
+        return p
+
+    def save_all_inplace(self):
+        done = [r for r in self.results if self.tstate.get(r.full_url, TileState()).status == "DONE"]
+        last = None
+        for r in done:
+            last = self.save_inplace(r, quiet=True) or last
+        if last:
+            self.message(f"✔ {len(done)} وێنە پاشەکەوت کران لە {last.parent}", 12000)
+            reveal_in_folder(last)
+
+    def open_inplace(self, r: core.ImageResult):
+        st = self.tstate.get(r.full_url)
+        if not st or st.status != "DONE" or self.busy:
+            return
+        try:
+            raw = Path(st.orig).read_bytes()
+            self.original, self.orig_bytes = core.open_image(raw), raw
+            self.orig_name = self._inplace_name(r)
+            self.cutout = Image.open(st.file).convert("RGBA")
+            self.low_quality = False
+            self.upscaled = st.enhanced
+            self._show_work()
+        except Exception as e:  # noqa: BLE001
+            self.message(f"نەتوانرا بکرێتەوە: {e}")
+
+    def undo_inplace(self, r: core.ImageResult):
+        st = self.tstate.get(r.full_url)
+        if st and st.status == "DONE":
+            self.tstate[r.full_url] = TileState()
+            for t in self._tiles_for(r.full_url):
+                t.state = self.tstate[r.full_url]
+            self.tile_changed.emit(r.full_url)
 
     # ───── یەک وێنە ─────
     def pick(self, r: core.ImageResult):
@@ -1017,11 +1353,11 @@ class MainWindow(QMainWindow):
         self.res_card.setVisible(has_c or has_o)
         self.hint.setVisible(not (has_o or has_c or self.batch or self.up_src is not None))
         if has_o:
-            self.orig_title.setText(f"وێنەی سەرەکی — {self.original.width}×{self.original.height} پیکسڵ")
+            self.orig_title.setText(f"وێنەی سەرەکی — {dims(self.original.width, self.original.height)} پیکسڵ")
             self.orig_view.set_image(pil_to_qimage(thumb(self.original, 1400)))
         self.low_lbl.setVisible(has_o and self.low_quality)
         if has_c:
-            self.res_title.setText(f"ئەنجام — بێ باکگراوند ({self.cutout.width}×{self.cutout.height})"
+            self.res_title.setText(f"ئەنجام — بێ باکگراوند ({dims(self.cutout.width, self.cutout.height)})"
                                    + ("  ✨ Upscale" if self.upscaled else ""))
             self.res_view.set_image(pil_to_qimage(thumb(self.cutout, 1400)))
         else:
@@ -1043,6 +1379,7 @@ class MainWindow(QMainWindow):
             want = int(total * 0.62) if (self.original is not None or self.batch or has_up) else 90
         else:
             want = 150 if self.results else int(total * 0.5)
+        self.work_scroll.setVisible(busy_top or not self.results)
         key = (busy_top, self.original is not None, bool(self.batch), bool(self.results), has_up, total)
         if getattr(self, "_split_key", None) != key:
             self._split_key = key
@@ -1067,7 +1404,7 @@ class MainWindow(QMainWindow):
             self._show_work()
             if note:
                 self.message(note)
-        self.run(work, done, label=f"٢/٢ لابردنی باکگراوند ({src.width}×{src.height})...")
+        self.run(work, done, label=f"٢/٢ لابردنی باکگراوند ({dims(src.width, src.height)})...")
 
     # ───── Upscale (بەشی جیا) ─────
     def _set_up_source(self, im: Image.Image, name: str):
@@ -1076,7 +1413,7 @@ class MainWindow(QMainWindow):
         self.up_before.checker = im.mode == "RGBA"
         self.up_before.set_image(pil_to_qimage(thumb(im, 1000)))
         self.up_after.set_image(None)
-        self.up_info.setText(f"وێنە: {im.width}×{im.height} پیکسڵ — دوگمەی 2× یان 4× دابگرە")
+        self.up_info.setText(f"وێنە: {dims(im.width, im.height)} پیکسڵ — دوگمەی 2× یان 4× دابگرە")
         self._refresh_up_ui()
         self.hint.hide()
         self.up_card.show()
@@ -1147,10 +1484,10 @@ class MainWindow(QMainWindow):
             self.up_scale = scale
             self.up_after.checker = up.mode == "RGBA"
             self.up_after.set_image(pil_to_qimage(thumb(up, 1400)))
-            self.up_info.setText(f"✔ Upscale ×{scale}: {src.width}×{src.height} → {up.width}×{up.height} پیکسڵ — "
+            self.up_info.setText(f"✔ Upscale ×{scale}: {dims(src.width, src.height)} → {dims(up.width, up.height)} پیکسڵ — "
                                  "پاشەکەوتی بکە یان ڕایبکێشە ناو هەر بەرنامەیەک")
             self._refresh_up_ui()
-            self.message(f"Upscale کرا: {src.width}×{src.height} → {up.width}×{up.height}", 10000)
+            self.message(f"Upscale کرا: {dims(src.width, src.height)} → {dims(up.width, up.height)}", 10000)
         self.run(work, done, label=f"Upscale ×{scale} بە AI...",
                  on_error=lambda e: self.message(f"Upscale سەرنەکەوت: {e}", 12000))
 
@@ -1191,6 +1528,16 @@ class MainWindow(QMainWindow):
             self._up_drag_key = id(self.up_res)
         return p
 
+    def close_editor(self):
+        if self.busy:
+            return
+        self.original = self.cutout = None
+        self.orig_bytes = None
+        self.upscaled = False
+        self._show_work()
+        self._split_key = None
+        self._fit_split()
+
     def close_upscale(self):
         self.up_src = self.up_res = None
         self.up_card.hide()
@@ -1208,7 +1555,7 @@ class MainWindow(QMainWindow):
         b.setText("🎨")
         b.setToolTip("ڕەنگی تر...")
         b.setFixedSize(34, 34)
-        b.setStyleSheet(f"QToolButton{{border-radius:17px;border:{'3px solid ' + PURPLE if custom else '1px solid #888'};"
+        b.setStyleSheet(f"QToolButton{{border-radius:17px;border:{'3px solid ' + ACCENT2 if custom else '1px solid ' + LINE};"
                         f"background:{'rgb' + str(self.bg) if custom else 'white'};}}")
         b.clicked.connect(self.pick_color)
         self.chips_box.addWidget(b)
@@ -1452,9 +1799,8 @@ class MainWindow(QMainWindow):
         picked = [r for r in self.results if r.full_url in self.selected]
         self.set_select_mode(False)
         for r in picked:
-            self.batch.append(BatchItem(self.next_id, url=r.full_url, fallback=r.thumb_url, referer=r.page_url))
-            self.next_id += 1
-        self.run_batch()
+            self.inplace(r)
+        self.message(f"{len(picked)} وێنە خرانە ڕیز — هەر یەکە لە شوێنی خۆی باکگراوندی لادەبرێت")
 
     def _batch_dir(self) -> Path:
         p = core.data_dir() / "batch"
@@ -1629,6 +1975,7 @@ class MainWindow(QMainWindow):
         shutil.rmtree(d, ignore_errors=True)
         shutil.rmtree(core.data_dir() / "batch", ignore_errors=True)
         shutil.rmtree(core.data_dir() / "drag", ignore_errors=True)
+        shutil.rmtree(core.data_dir() / "inplace", ignore_errors=True)
         self._build_chips()
         self._populate_grid()
         self._show_work()
@@ -1709,7 +2056,11 @@ def make_icon() -> QIcon:
     pm.fill(Qt.transparent)
     p = QPainter(pm)
     p.setRenderHint(QPainter.Antialiasing)
-    p.setBrush(QBrush(QColor(PURPLE)))
+    from PySide6.QtGui import QLinearGradient
+    g = QLinearGradient(0, 0, 256, 256)
+    g.setColorAt(0, QColor(ACCENT))
+    g.setColorAt(1, QColor(ACCENT2))
+    p.setBrush(QBrush(g))
     p.setPen(Qt.NoPen)
     p.drawRoundedRect(8, 8, 240, 240, 56, 56)
     p.setBrush(QBrush(QColor("white")))
@@ -1752,16 +2103,18 @@ def main():
         f = app.font()
         f.setFamily("Segoe UI")
         app.setFont(f)
-    # ڕووکاری ڕووناک بەبێ گوێدانە Dark Mode ی ویندۆز (نووسینی ڕەش لەسەر باکگراوندی سپی)
+    # ڕووکاری تاریکی تایبەت (بەبێ گوێدانە ڕێکخستنی ویندۆز، هەموو ڕەنگەکان دیاریکراون)
     app.setStyle("Fusion")
     from PySide6.QtGui import QPalette
     pal = QPalette()
-    for role, col in [(QPalette.Window, "#FBF9FF"), (QPalette.WindowText, "#1C1B1F"),
-                      (QPalette.Base, "#FFFFFF"), (QPalette.AlternateBase, "#F1EFF7"),
-                      (QPalette.Text, "#1C1B1F"), (QPalette.Button, "#FFFFFF"),
-                      (QPalette.ButtonText, PURPLE), (QPalette.ToolTipBase, "#FFFFFF"),
-                      (QPalette.ToolTipText, "#1C1B1F"), (QPalette.PlaceholderText, "#8A8899"),
-                      (QPalette.Highlight, PURPLE), (QPalette.HighlightedText, "#FFFFFF")]:
+    for role, col in [(QPalette.Window, BG), (QPalette.WindowText, TEXT),
+                      (QPalette.Base, "#12142A"), (QPalette.AlternateBase, CARD),
+                      (QPalette.Text, TEXT), (QPalette.Button, CARD2),
+                      (QPalette.ButtonText, TEXT), (QPalette.ToolTipBase, CARD2),
+                      (QPalette.ToolTipText, "#FFFFFF"), (QPalette.PlaceholderText, "#6E739C"),
+                      (QPalette.Highlight, ACCENT), (QPalette.HighlightedText, "#FFFFFF"),
+                      (QPalette.Light, "#3A3F6A"), (QPalette.Mid, LINE), (QPalette.Dark, "#0A0B14"),
+                      (QPalette.Shadow, "#000000"), (QPalette.BrightText, "#FFFFFF"), (QPalette.Link, ACCENT2)]:
         pal.setColor(role, QColor(col))
     app.setPalette(pal)
     app.setStyleSheet(STYLE)

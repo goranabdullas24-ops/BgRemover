@@ -387,6 +387,25 @@ object ImageUtils {
         return uri
     }
 
+    /** فایلی PNG ی ئامادە (وەک خۆی، بێ دووبارە کۆمپرێسکردن) → گاڵەری › Pictures/BgRemover */
+    fun savePngFileToGallery(ctx: Context, file: File): Uri {
+        val r = ctx.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "bg_${System.currentTimeMillis()}.png")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/BgRemover")
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        val uri = r.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: throw IOException("نەتوانرا فایل دروست بکرێت")
+        r.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
+            ?: throw IOException("نەتوانرا فایل بنووسرێت")
+        values.clear()
+        values.put(MediaStore.Images.Media.IS_PENDING, 0)
+        r.update(uri, values, null, null)
+        return uri
+    }
+
     fun saveToGallery(ctx: Context, bmp: Bitmap): Uri {
         val r = ctx.contentResolver
         val values = ContentValues().apply {

@@ -39,7 +39,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "1.6"
+VERSION = "2.0"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 
@@ -846,6 +846,7 @@ class Settings:
     person_only: bool = True
     focus_only: bool = True
     save_dir: str = ""
+    auto_enhance: bool = True     # دوای لابردن، وێنەی بچووک ×2 بە AI ڕوون دەکرێتەوە
 
     @staticmethod
     def path() -> Path:

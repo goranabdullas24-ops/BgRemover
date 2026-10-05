@@ -7,6 +7,7 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
@@ -16,6 +17,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.max
@@ -100,6 +103,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun changeFocusOnly(v: Boolean) {
         focusOnly = v
         prefs.edit().putBoolean("focus_only", v).apply()
+    }
+
+    /** دوای لابردن، وێنەی بچووک ×2 بە AI ڕوون دەکرێتەوە (لە شوێنی خۆی) */
+    var autoEnhance by mutableStateOf(prefs.getBoolean("auto_enhance", true))
+        private set
+
+    fun changeAutoEnhance(v: Boolean) {
+        autoEnhance = v
+        prefs.edit().putBoolean("auto_enhance", v).apply()
     }
 
     fun changePersonOnly(v: Boolean) {
@@ -381,6 +393,144 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             message = "Upscale سەرنەکەوت: ${e.message}"; null
         }
 
+
+    // ───────────────────────── لابردن «لە شوێنی خۆی» لەسەر هەر وێنەیەک ─────────────────────────
+
+    data class TileState(
+        val status: String = "",          // "" | WAITING | WORKING | DONE | ERROR
+        val msg: String = "",
+        val file: String = "",
+        val orig: String = "",
+        val w: Int = 0, val h: Int = 0,
+        val enhanced: Boolean = false,
+        val thumb: Bitmap? = null
+    )
+
+    val tiles = mutableStateMapOf<String, TileState>()
+    private val inplaceLock = Mutex()
+    private val inplaceDir get() = File(getApplication<Application>().filesDir, "inplace").apply { mkdirs() }
+
+    fun inplace(r: ImageResult) {
+        val url = r.fullUrl
+        val cur = tiles[url]
+        if (cur != null && cur.status in setOf("WAITING", "WORKING", "DONE")) return
+        tiles[url] = TileState("WAITING")
+        viewModelScope.launch {
+            inplaceLock.withLock {
+                if (tiles[url]?.status != "WAITING") return@withLock
+                var lastT = 0L
+                fun upd(m: String) {
+                    val now = System.currentTimeMillis()
+                    if (now - lastT < 250 && tiles[url]?.status == "WORKING") return
+                    lastT = now
+                    tiles[url] = TileState("WORKING", m.replace("داگرتنی مۆدێلی", "مۆدێل").take(46))
+                }
+                try {
+                    upd("داگرتنی وێنە بە قەبارەی تەواو...")
+                    val ref = Uri.parse(url).let { "${it.scheme}://${it.host}/" }
+                    val tries = listOf<suspend () -> Pair<ByteArray, String>>(
+                        { ImageUtils.downloadRaw(url) },
+                        { ImageUtils.downloadRaw(url, ref, ImageUtils.DESKTOP_UA) },
+                        { ImageUtils.downloadRaw(ImageUtils.proxied(url)) },
+                        { ImageUtils.downloadRaw(r.thumbUrl) },
+                    )
+                    var got: Pair<ByteArray, String>? = null
+                    var err: String? = null
+                    for (t in tries) {
+                        try { got = t(); break } catch (e: CancellationException) { throw e } catch (e: Exception) { err = e.message }
+                    }
+                    val (bytes, mime) = got ?: throw java.io.IOException(err ?: "دانابەزێت")
+                    val src = withContext(Dispatchers.Default) { ImageUtils.decodeBytes(bytes) }
+                    var out = cut(src) { upd(it) }
+                    var enh = false
+                    if (autoEnhance && max(out.width, out.height) < 1800) {
+                        try {
+                            val up = Upscaler.upscaleImage(getApplication(), out, 2, src) {
+                                upd(it.replace("Upscale ×2 بە AI", "بەرزکردنەوەی کوالیتی"))
+                            }
+                            out = up; enh = true
+                        } catch (e: CancellationException) { throw e } catch (_: Throwable) {}
+                    }
+                    upd("پاشەکەوتکردن...")
+                    val h = Integer.toHexString(url.hashCode())
+                    val f = File(inplaceDir, "$h.png")
+                    val of = File(inplaceDir, "${h}_orig." + when (mime) { "image/png" -> "png"; "image/webp" -> "webp"; else -> "jpg" })
+                    val thumb = withContext(Dispatchers.IO) {
+                        f.outputStream().use { out.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                        of.writeBytes(bytes)
+                        val sc = minOf(1f, 520f / max(out.width, out.height))
+                        Bitmap.createScaledBitmap(out, (out.width * sc).toInt().coerceAtLeast(1), (out.height * sc).toInt().coerceAtLeast(1), true)
+                    }
+                    tiles[url] = TileState("DONE", "", f.absolutePath, of.absolutePath, out.width, out.height, enh, thumb)
+                } catch (e: CancellationException) {
+                    tiles.remove(url); throw e
+                } catch (e: OutOfMemoryError) {
+                    tiles[url] = TileState("ERROR", "بیرگەی مۆبایل بەس نییە")
+                } catch (e: Exception) {
+                    tiles[url] = TileState("ERROR", (e.message ?: "هەڵە").take(50))
+                }
+            }
+        }
+    }
+
+    fun inplaceAll() {
+        var n = 0
+        results.forEach { r ->
+            val st = tiles[r.fullUrl]?.status ?: ""
+            if (st == "" || st == "ERROR") { tiles.remove(r.fullUrl); inplace(r); n++ }
+        }
+        message = "$n وێنە خرانە ڕیز"
+    }
+
+    val doneCount: Int get() = results.count { tiles[it.fullUrl]?.status == "DONE" }
+
+    fun saveInplace(r: ImageResult, quiet: Boolean = false) {
+        val st = tiles[r.fullUrl] ?: return
+        if (st.status != "DONE") return
+        viewModelScope.launch {
+            val ok = try {
+                withContext(Dispatchers.IO) { ImageUtils.savePngFileToGallery(getApplication(), File(st.file)) }
+                true
+            } catch (e: Exception) { false }
+            if (!quiet) message = if (ok) "✔ پاشەکەوت کرا لە گاڵەری › Pictures/BgRemover" else "پاشەکەوت سەرنەکەوت"
+        }
+    }
+
+    fun saveAllInplace() {
+        val done = results.filter { tiles[it.fullUrl]?.status == "DONE" }
+        done.forEach { saveInplace(it, quiet = true) }
+        message = "✔ ${done.size} وێنە پاشەکەوت کران لە گاڵەری › Pictures/BgRemover"
+    }
+
+    fun openInplace(r: ImageResult) {
+        val st = tiles[r.fullUrl] ?: return
+        if (st.status != "DONE" || busy != null) return
+        viewModelScope.launch {
+            try {
+                val (o, c) = withContext(Dispatchers.IO) {
+                    ImageUtils.decodeBytes(File(st.orig).readBytes()) to
+                        ImageUtils.decodeBytes(File(st.file).readBytes())
+                }
+                originalUrl = r.fullUrl; originalFallback = r.thumbUrl
+                lowQuality = false
+                original = o
+                cutout = c
+                upscaled = st.enhanced
+            } catch (e: Exception) {
+                message = "نەتوانرا بکرێتەوە: ${e.message}"
+            }
+        }
+    }
+
+    fun undoInplace(r: ImageResult) {
+        tiles.remove(r.fullUrl)
+    }
+
+    fun closeEditor() {
+        if (busy != null) return
+        original = null; cutout = null; upscaled = false
+    }
+
     // ───── بەشی Upscale ی جیا ─────
     var upSrc by mutableStateOf<Bitmap?>(null)
         private set
@@ -582,9 +732,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun batchFromSelection() {
         val picked = results.filter { it.fullUrl in selected }
         if (picked.isEmpty()) return
-        picked.forEach { batch += BatchItem(nextId++, url = it.fullUrl, fallbackUrl = it.thumbUrl, referer = it.pageUrl) }
         cancelSelect()
-        runBatch()
+        picked.forEach { inplace(it) }
+        message = "${picked.size} وێنە خرانە ڕیز — هەر یەکە لە شوێنی خۆی"
     }
 
     fun batchFromUris(uris: List<Uri>) {
