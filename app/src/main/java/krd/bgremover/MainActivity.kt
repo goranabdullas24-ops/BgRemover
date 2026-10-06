@@ -53,20 +53,20 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-// ── ڕووکار: تێمی ڕووناک + ڕەنگی وەنەوشەیی/پەمەیی (وەک بەرنامەی کۆمپیوتەر) ──
-private val Bg = Color(0xFFF6F4FF)
+// ── ڕووکار: شێوازی گۆگڵ (سپی، شین) + ڕەنگی وەنەوشەیی/پەمەیی (وەک بەرنامەی کۆمپیوتەر) ──
+private val Bg = Color(0xFFFFFFFF)
 private val SurfaceC = Color(0xFFFFFFFF)
 private val CardC = Color(0xFFFFFFFF)
-private val Card2 = Color(0xFFF2EFFD)
-private val LineC = Color(0xFFE3DEF6)
-private val TextC = Color(0xFF1D1B33)
-private val Muted = Color(0xFF6B6890)
-private val Accent = Color(0xFF7B5CF0)
-private val Accent2 = Color(0xFFF0508F)
-private val OkC = Color(0xFF14A86A)
-private val ErrC = Color(0xFFE5484D)
+private val Card2 = Color(0xFFF1F3F4)
+private val LineC = Color(0xFFDADCE0)
+private val TextC = Color(0xFF202124)
+private val Muted = Color(0xFF5F6368)
+private val Accent = Color(0xFF1A73E8)
+private val Accent2 = Color(0xFF1A73E8)
+private val OkC = Color(0xFF188038)
+private val ErrC = Color(0xFFD93025)
 private val Purple = Accent
-private val Grad = Brush.linearGradient(listOf(Accent, Accent2))
+private val Grad = Brush.linearGradient(listOf(Accent, Accent))
 
 private fun dims(w: Int, h: Int) = "\u200e${w}×${h}\u200e"
 
@@ -161,31 +161,32 @@ fun App(vm: MainViewModel = viewModel()) {
 
     Scaffold(
         containerColor = Bg,
-        topBar = {
+        topBar = { Column {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(Accent, Accent2)))
+                    .background(Color.White)
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Image(
                     androidx.compose.ui.res.painterResource(R.drawable.logo), contentDescription = "SG search",
-                    modifier = Modifier.size(46.dp).border(2.dp, Color(0x99FFFFFF), RoundedCornerShape(13.dp))
+                    modifier = Modifier.size(40.dp)
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("SG search", color = Color.White, fontWeight = FontWeight.ExtraBold,
+                    Text("SG search", color = TextC, fontWeight = FontWeight.ExtraBold,
                         style = MaterialTheme.typography.titleLarge)
-                    Text("گەڕان · لابردنی باکگراوند · Upscale بە AI", color = Color(0xE6FFFFFF),
+                    Text("گەڕان · لابردنی باکگراوند · Upscale بە AI", color = Muted,
                         style = MaterialTheme.typography.labelMedium)
                 }
                 IconButton(onClick = { showSettings = true }) {
-                    Icon(Icons.Default.Settings, contentDescription = "ڕێکخستن", tint = Color.White)
+                    Icon(Icons.Default.Settings, contentDescription = "ڕێکخستن", tint = Muted)
                 }
             }
-        },
+            HorizontalDivider(color = LineC)
+        } },
         snackbarHost = { SnackbarHost(snack) }
     ) { pad ->
         Column(
@@ -208,7 +209,7 @@ fun App(vm: MainViewModel = viewModel()) {
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(28.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { focus.clearFocus(); vm.submit() }),
                 modifier = Modifier.fillMaxWidth()
@@ -420,17 +421,24 @@ fun App(vm: MainViewModel = viewModel()) {
                         ) { vm.saveAllInplace() }
                         Spacer(Modifier.height(8.dp))
                     }
-                    vm.results.chunked(2).forEach { row ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        ) {
-                            row.forEach { item ->
-                                ResultTile(vm, item, loader, Modifier.weight(1f))
+                    // وەک گۆگڵ: دوو ستوون، هەر وێنەیەک بە ڕێژەی خۆی (بێ بڕین)
+                    val cols = remember(vm.results) {
+                        val a = ArrayList<ImageResult>(); val b = ArrayList<ImageResult>()
+                        var ha = 0f; var hb = 0f
+                        vm.results.forEach { r ->
+                            val h = tileRatio(r).let { 1f / it }
+                            if (ha <= hb) { a += r; ha += h } else { b += r; hb += h }
+                        }
+                        a to b
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        listOf(cols.first, cols.second).forEach { col ->
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                col.forEach { item -> ResultTile(vm, item, loader, Modifier.fillMaxWidth()) }
                             }
-                            repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
                     if (vm.canLoadMore) {
                         OutlinedButton(
                             onClick = vm::loadMore,
@@ -670,8 +678,8 @@ private fun SettingsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                     Switch(checked = vm.autoEnhance, onCheckedChange = { vm.changeAutoEnhance(it) })
                     Spacer(Modifier.width(8.dp))
                     Column {
-                        Text("بەرزکردنەوەی کوالیتی دوای لابردن", fontWeight = FontWeight.Medium)
-                        Text("وێنەی بچووک (کەمتر لە 1800px) ×2 بە AI ڕوون دەکرێتەوە", style = MaterialTheme.typography.bodySmall, color = Muted)
+                        Text("بەرزکردنەوەی کوالیتی لەگەڵ لابردن", fontWeight = FontWeight.Medium)
+                        Text("بە شێوەی بنەڕەت کوژاوەیە — تەنها کاتێک خۆت دەتەوێت", style = MaterialTheme.typography.bodySmall, color = Muted)
                     }
                 }
                 HorizontalDivider()
@@ -811,7 +819,7 @@ private fun GradientButton(
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(if (enabled) Grad else Brush.linearGradient(listOf(Card2, Card2)))
             .clickable(enabled = enabled, onClick = onClick)
     ) {
@@ -826,6 +834,9 @@ private fun GradientButton(
 }
 
 /** خانەی وێنەیەکی گەڕان: لابردنی باکگراوند و بەرزکردنەوەی کوالیتی لە شوێنی خۆیدا. */
+private fun tileRatio(r: ImageResult): Float =
+    if (r.width > 0 && r.height > 0) (r.width.toFloat() / r.height).coerceIn(0.55f, 1.9f) else 1f
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ResultTile(vm: MainViewModel, item: ImageResult, loader: ImageLoader, modifier: Modifier) {
@@ -833,17 +844,17 @@ private fun ResultTile(vm: MainViewModel, item: ImageResult, loader: ImageLoader
     val sel = item.fullUrl in vm.selected
     val done = st.status == "DONE"
     val working = st.status == "WAITING" || st.status == "WORKING"
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(12.dp)
     Box(
         modifier
-            .aspectRatio(1f)
+            .aspectRatio(if (done && st.h > 0) (st.w.toFloat() / st.h).coerceIn(0.55f, 1.9f) else tileRatio(item))
             .clip(shape)
             .background(CardC)
             .then(
                 when {
-                    sel -> Modifier.border(3.dp, Grad, shape)
+                    sel -> Modifier.border(3.dp, Accent, shape)
                     done -> Modifier.border(2.dp, OkC, shape)
-                    else -> Modifier.border(1.dp, LineC, shape)
+                    else -> Modifier
                 }
             )
             .combinedClickable(
@@ -862,7 +873,7 @@ private fun ResultTile(vm: MainViewModel, item: ImageResult, loader: ImageLoader
             val img = remember(st.thumb) { st.thumb!!.asImageBitmap() }
             Image(
                 img, null, contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize().padding(start = 6.dp, end = 6.dp, top = 6.dp, bottom = 26.dp)
+                modifier = Modifier.fillMaxSize()
             )
         } else {
             AsyncImage(
@@ -874,49 +885,43 @@ private fun ResultTile(vm: MainViewModel, item: ImageResult, loader: ImageLoader
             )
         }
         // شریتی خوارەوە
-        if (done) {
-            Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(30.dp).background(Color(0xF0FFFFFF)))
-        } else {
-            Box(
-                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(48.dp)
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xDD080812))))
-            )
-        }
         val label = when {
-            done -> "✓ ${dims(st.w, st.h)}" + if (st.enhanced) "  ✨HD" else ""
+            done -> "✓ ${dims(st.w, st.h)}" + if (st.enhanced) "  HD" else ""
             item.width > 0 && item.height > 0 -> dims(item.width, item.height)
             else -> ""
         }
         if (label.isNotEmpty()) {
             Text(
                 label, color = if (done) OkC else Color.White, fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.labelMedium, maxLines = 1,
-                modifier = Modifier.align(Alignment.BottomStart).padding(horizontal = 10.dp, vertical = 7.dp)
+                style = MaterialTheme.typography.labelSmall, maxLines = 1,
+                modifier = Modifier.align(Alignment.BottomStart).padding(6.dp)
+                    .background(if (done) Color(0xF0FFFFFF) else Color(0x99000000), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 7.dp, vertical = 2.dp)
             )
         }
         // دۆخی کارکردن
         if (working || st.status == "ERROR") {
             Column(
-                Modifier.fillMaxSize().background(Color(0xB80A0A18)).padding(10.dp),
+                Modifier.fillMaxSize().background(Color(0xD9FFFFFF)).padding(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
                 when (st.status) {
                     "WORKING" -> CircularProgressIndicator(Modifier.size(40.dp), color = Accent2, strokeWidth = 4.dp,
-                        trackColor = Color(0x338B6CFF))
-                    "WAITING" -> Icon(Icons.Default.HourglassEmpty, null, tint = Color.White)
+                        trackColor = Color(0x331A73E8))
+                    "WAITING" -> Icon(Icons.Default.HourglassEmpty, null, tint = Muted)
                     else -> Icon(Icons.Default.ErrorOutline, null, tint = ErrC)
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
                     when (st.status) { "WAITING" -> "لە ڕیزدایە..."; "WORKING" -> st.msg.ifBlank { "کار دەکات..." }; else -> st.msg },
-                    color = if (st.status == "ERROR") ErrC else Color.White,
+                    color = if (st.status == "ERROR") ErrC else TextC,
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     maxLines = 3
                 )
                 if (st.status == "ERROR") {
-                    TextButton(onClick = { vm.undoInplace(item); vm.inplace(item) }) { Text("دووبارە", color = Color.White) }
+                    TextButton(onClick = { vm.undoInplace(item); vm.inplace(item) }) { Text("دووبارە", color = Accent) }
                 }
             }
         }

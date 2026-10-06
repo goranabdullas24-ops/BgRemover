@@ -39,7 +39,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "2.4"
+VERSION = "3.0"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 
@@ -689,7 +689,9 @@ def refine(rgb: np.ndarray, raw: np.ndarray) -> np.ndarray:
     band = _box(raw, r * 3)
     a = np.where((raw > 0.985) & (a > 0.5), 1.0, a)
     a = np.where(band < 0.01, 0.0, a)
-    return np.clip((a - 0.03) / 0.94, 0, 1).astype(np.float32)
+    # لابردنی ڕووناکی/هالۆی دەوری کەسەکە: لێوار کەمێک بۆ ناوەوە (نیو-erosion) و تیژتر
+    a = 0.5 * a + 0.5 * nd.grey_erosion(a, size=(3, 3))
+    return np.clip((a - 0.06) / 0.88, 0, 1).astype(np.float32)
 
 
 # ───────────────────────── لابردنی باکگراوند ─────────────────────────
@@ -757,10 +759,32 @@ def compute_alpha(im: Image.Image, opts: CutOptions, progress: ProgressFn = _noo
 
 
 def apply_alpha(src: Image.Image, alpha: np.ndarray) -> Image.Image:
-    """ماسکەکە دەخاتە سەر وێنە ئەسڵییەکە بە قەبارەی تەواو؛ ڕەنگەکان دەستکاری ناکرێن."""
+    """
+    ماسکەکە دەخاتە سەر وێنە ئەسڵییەکە بە قەبارەی تەواو. ناوەوەی کەسەکە دەستکاری ناکرێت؛
+    تەنها پیکسڵە نیمچە-ڕوونەکانی لێوار ڕەنگی باکگراوندیان لێ دەسڕدرێتەوە (بێ هالۆی ڕووناک).
+    """
     a = alpha if alpha.shape == (src.height, src.width) else _resize_mask(alpha, src.size)
-    out = src.convert("RGB").copy()
-    out.putalpha(Image.fromarray((np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)))
+    a = np.clip(a, 0, 1).astype(np.float32)
+    rgb_im = src.convert("RGB")
+    rgb = np.asarray(rgb_im).copy()
+    edge = (a > 0.004) & (a < 0.97)
+    if edge.any():
+        h, w = a.shape
+        sc = min(1.0, 700 / max(h, w))
+        sw, sh = max(1, round(w * sc)), max(1, round(h * sc))
+        small = np.asarray(rgb_im.resize((sw, sh), Image.BILINEAR), np.float32)
+        inv = 1.0 - _resize_mask(a, (sw, sh))
+        sig = max(2.0, max(sw, sh) * 0.015)
+        den = nd.gaussian_filter(inv, sig) + 1e-4
+        B = np.stack([nd.gaussian_filter(small[..., c] * inv, sig) / den for c in range(3)], -1)
+        Bf = np.asarray(Image.fromarray(np.clip(B, 0, 255).astype(np.uint8)).resize((w, h), Image.BILINEAR), np.float32)
+        ys, xs = np.nonzero(edge)
+        aa = np.maximum(a[ys, xs], 0.25)[:, None]
+        C = rgb[ys, xs].astype(np.float32)
+        F = (C - (1 - aa) * Bf[ys, xs]) / aa
+        rgb[ys, xs] = np.clip(F + 0.5, 0, 255).astype(np.uint8)
+    out = Image.fromarray(rgb)
+    out.putalpha(Image.fromarray((a * 255 + 0.5).astype(np.uint8)))
     return out
 
 
@@ -923,7 +947,7 @@ class Settings:
     person_only: bool = True
     focus_only: bool = True
     save_dir: str = ""
-    auto_enhance: bool = True     # دوای لابردن، وێنەی بچووک ×2 بە AI ڕوون دەکرێتەوە
+    enhance_after_cut: bool = False   # تەنها ئەگەر بەکارهێنەر بیەوێت: دوای لابردن ×2 بە AI
 
     @staticmethod
     def path() -> Path:

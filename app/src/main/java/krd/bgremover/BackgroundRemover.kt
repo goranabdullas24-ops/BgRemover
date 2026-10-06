@@ -189,6 +189,19 @@ object MaskRefiner {
             alpha = guidedFilter(gray, alpha, w, h, max(1, radius / 2), 1e-4f)
         }
 
+        // لابردنی ڕووناکی/هالۆی دەوری کەسەکە: نیو-erosion ی ٣×٣ (لێوار کەمێک بۆ ناوەوە)
+        if (light) {
+            val er = FloatArray(n)
+            for (y in 0 until h) for (x in 0 until w) {
+                var m = alpha[y * w + x]
+                for (dy in -1..1) { val yy = y + dy; if (yy < 0 || yy >= h) continue
+                    for (dx in -1..1) { val xx = x + dx; if (xx < 0 || xx >= w) continue
+                        val v = alpha[yy * w + xx]; if (v < m) m = v } }
+                er[y * w + x] = m
+            }
+            for (i in 0 until n) alpha[i] = 0.5f * alpha[i] + 0.5f * er[i]
+        }
+
         // تەنها لە نزیک لێوارەکاندا ڕێگە بە ئەلفا بدە (نەک لە ناو باکگراوندی دوور)
         val band = box(raw, w, h, radius * 3)
         for (i in 0 until n) {
@@ -198,7 +211,7 @@ object MaskRefiner {
                 band[i] < 0.01f -> a = 0f                       // دوور لە بابەت: تەواو لابراو
             }
             // levels: کەمێک تیژکردنەوە بۆ ئەوەی لێوار لێڵ نەبێت
-            alpha[i] = if (light) ((a - 0.03f) / 0.94f).coerceIn(0f, 1f)
+            alpha[i] = if (light) ((a - 0.06f) / 0.88f).coerceIn(0f, 1f)
                        else ((a - 0.12f) / 0.80f).coerceIn(0f, 1f)
         }
 

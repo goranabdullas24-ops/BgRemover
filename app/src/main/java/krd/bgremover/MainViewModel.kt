@@ -106,12 +106,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** دوای لابردن، وێنەی بچووک ×2 بە AI ڕوون دەکرێتەوە (لە شوێنی خۆی) */
-    var autoEnhance by mutableStateOf(prefs.getBoolean("auto_enhance", true))
+    var autoEnhance by mutableStateOf(prefs.getBoolean("enhance_after_cut", false))
         private set
 
     fun changeAutoEnhance(v: Boolean) {
         autoEnhance = v
-        prefs.edit().putBoolean("auto_enhance", v).apply()
+        prefs.edit().putBoolean("enhance_after_cut", v).apply()
     }
 
     fun changePersonOnly(v: Boolean) {

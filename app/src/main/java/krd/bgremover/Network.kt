@@ -267,20 +267,27 @@ object ImageUtils {
         val aFull = if (a.width == w && a.height == h) a else Bitmap.createScaledBitmap(a, w, h, true)
         val out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         out.setHasAlpha(true)
+        // ڕەنگی پیکسڵە نیمچە-ڕوونەکانی لێوار لە ئەنجامی پاککراوەوە (بێ هالۆی ڕووناکی باکگراوند)
+        val cutFull = if (cut.width == w && cut.height == h) cut else Bitmap.createScaledBitmap(cut, w, h, true)
         val band = 64
         val sp = IntArray(w * band)
         val ap = IntArray(w * band)
+        val cp = IntArray(w * band)
         var y = 0
         while (y < h) {
             val rows = minOf(band, h - y)
             src.getPixels(sp, 0, w, 0, y, w, rows)
             aFull.getPixels(ap, 0, w, 0, y, w, rows)
+            cutFull.getPixels(cp, 0, w, 0, y, w, rows)
             for (i in 0 until w * rows) {
-                sp[i] = (ap[i] and 0xFF000000.toInt()) or (sp[i] and 0x00FFFFFF)
+                val al = (ap[i] ushr 24) and 255
+                val rgb = if (al in 2..246 && ((cp[i] ushr 24) and 255) > 8) cp[i] else sp[i]
+                sp[i] = (al shl 24) or (rgb and 0x00FFFFFF)
             }
             out.setPixels(sp, 0, w, 0, y, w, rows)
             y += rows
         }
+        if (cutFull !== cut) cutFull.recycle()
         if (aFull !== a) aFull.recycle()
         a.recycle()
         return out

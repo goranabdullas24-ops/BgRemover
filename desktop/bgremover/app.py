@@ -28,50 +28,50 @@ from PySide6.QtWidgets import (QApplication, QButtonGroup, QCheckBox, QColorDial
 
 from . import core
 
-# ───────────────────────── ڕووکار (تێمی ڕووناک + ڕەنگی وەنەوشەیی/پەمەیی) ─────────────────────────
+# ───────────────────────── ڕووکار (شێوازی گۆگڵ: سپی، شین، ساکار) ─────────────────────────
 APP_TITLE = "SG search"
-BG = "#F6F4FF"          # باکگراوندی پەنجەرە
-SURFACE = "#FFFFFF"     # بەشەکان
-CARD = "#FFFFFF"        # کارتەکان
-CARD2 = "#F2EFFD"       # دوگمە / hover
-LINE = "#E3DEF6"        # هێڵ
-TEXT = "#1D1B33"
-MUTED = "#6B6890"
-ACCENT = "#7B5CF0"      # وەنەوشەیی
-ACCENT2 = "#F0508F"     # پەمەیی
-OK = "#14A86A"
-ERR = "#E5484D"
+BG = "#FFFFFF"          # باکگراوندی پەنجەرە
+SURFACE = "#FFFFFF"
+CARD = "#FFFFFF"
+CARD2 = "#F1F3F4"       # دوگمە / hover (خۆڵەمێشی کاڵی گۆگڵ)
+LINE = "#DADCE0"        # هێڵی گۆگڵ
+TEXT = "#202124"
+MUTED = "#5F6368"
+ACCENT = "#1A73E8"      # شینی گۆگڵ
+ACCENT2 = "#1A73E8"
+OK = "#188038"
+ERR = "#D93025"
 PURPLE = ACCENT
-GRAD = f"qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 {ACCENT}, stop:1 {ACCENT2})"
-GRAD_H = "qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #8C70FF, stop:1 #FF62A0)"
+GRAD = ACCENT
+GRAD_H = "#1765CC"
 
 STYLE = f"""
 QWidget {{ font-size: 10.5pt; color: {TEXT}; }}
 QMainWindow, QDialog {{ background: {BG}; }}
 QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; border: none; }}
 QWidget#root {{ background: {BG}; }}
-QFrame#header {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 {ACCENT}, stop:1 {ACCENT2});
-                 border-radius: 20px; }}
-QFrame#header QPushButton {{ background: rgba(255,255,255,40); border: 1px solid rgba(255,255,255,90); color: white; }}
-QFrame#header QPushButton:hover {{ background: rgba(255,255,255,75); }}
-QFrame#header QPushButton#primary {{ background: white; color: {ACCENT}; border: none; }}
-QFrame#header QPushButton#primary:hover {{ background: #F4F0FF; }}
-QFrame#header QLineEdit {{ background: white; border: none; color: {TEXT}; }}
-QFrame#header QLineEdit:focus {{ background: white; border: 2px solid rgba(255,255,255,200); }}
-QLabel#appTitle {{ font-size: 17pt; font-weight: 800; color: white; }}
-QLabel#appSub {{ color: rgba(255,255,255,215); font-size: 9.5pt; }}
-QFrame#card {{ background: {CARD}; border-radius: 18px; border: 1px solid {LINE}; }}
-QFrame#panel {{ background: {SURFACE}; border-radius: 18px; border: 1px solid {LINE}; }}
+QFrame#header {{ background: white; border: none; border-bottom: 1px solid {LINE}; border-radius: 0; }}
+QFrame#header QPushButton {{ background: white; border: 1px solid {LINE}; color: {MUTED}; border-radius: 23px; }}
+QFrame#header QPushButton:hover {{ background: {CARD2}; color: {TEXT}; }}
+QFrame#header QPushButton#primary {{ background: {ACCENT}; color: white; border: none; border-radius: 23px; }}
+QFrame#header QPushButton#primary:hover {{ background: #1765CC; }}
+QFrame#header QLineEdit {{ background: white; border: 1px solid #DFE1E5; border-radius: 23px; color: {TEXT}; padding: 10px 22px; }}
+QFrame#header QLineEdit:hover {{ border-color: #C6C9CE; }}
+QFrame#header QLineEdit:focus {{ border: 1px solid #C6C9CE; background: white; }}
+QLabel#appTitle {{ font-size: 18pt; font-weight: 700; color: {TEXT}; }}
+QLabel#appSub {{ color: {MUTED}; font-size: 9pt; }}
+QFrame#card {{ background: {CARD}; border-radius: 12px; border: 1px solid {LINE}; }}
+QFrame#panel {{ background: {SURFACE}; border: none; }}
 QLabel#cardTitle {{ font-weight: 700; font-size: 11.5pt; color: {TEXT}; }}
 QLabel#muted {{ color: {MUTED}; }}
 QLabel {{ background: transparent; }}
-QPushButton {{ border: 1px solid {LINE}; border-radius: 12px; padding: 8px 14px; background: {CARD2}; color: {TEXT}; font-weight: 600; }}
-QPushButton:hover {{ background: #E9E3FF; border-color: {ACCENT}; color: {ACCENT}; }}
-QPushButton:pressed {{ background: #DDD4FF; }}
+QPushButton {{ border: 1px solid {LINE}; border-radius: 18px; padding: 8px 16px; background: white; color: {TEXT}; font-weight: 500; }}
+QPushButton:hover {{ background: #F8F9FA; border-color: #D2E3FC; color: {ACCENT}; }}
+QPushButton:pressed {{ background: #E8F0FE; }}
 QPushButton:disabled {{ color: #B4B0CC; background: #F7F6FB; border-color: #ECE9F6; }}
 QPushButton#primary {{ background: {GRAD}; color: white; border: none; }}
 QPushButton#primary:hover {{ background: {GRAD_H}; }}
-QPushButton#primary:disabled {{ background: #D9D2F5; color: white; }}
+QPushButton#primary:disabled {{ background: #AECBFA; color: white; }}
 QPushButton#ghost {{ background: transparent; border: 1px solid {LINE}; color: {MUTED}; }}
 QPushButton#ghost:hover {{ color: white; border-color: {ACCENT}; }}
 QLineEdit {{ border: 1.5px solid {LINE}; border-radius: 14px; padding: 10px 16px; background: white; color: {TEXT};
@@ -84,15 +84,15 @@ QMenu {{ background: {CARD}; color: {TEXT}; border: 1px solid {LINE}; border-rad
 QMenu::item {{ padding: 7px 18px; border-radius: 6px; }}
 QMenu::item:selected {{ background: {ACCENT}; color: white; }}
 QToolTip {{ background: white; color: {TEXT}; border: 1px solid {ACCENT}; padding: 5px; border-radius: 6px; }}
-QToolButton#tileBtn {{ background: rgba(255,255,255,235); color: {ACCENT}; border-radius: 17px; font-size: 12.5pt; font-weight: 800;
-                       border: 1px solid rgba(123,92,240,60); }}
+QToolButton#tileBtn {{ background: rgba(255,255,255,240); color: {TEXT}; border-radius: 17px; font-size: 12.5pt; font-weight: 700;
+                       border: 1px solid {LINE}; }}
 QToolButton#tileBtn:hover {{ background: {GRAD}; color: white; border: none; }}
 QToolButton#tileBtn:disabled {{ color: #777; }}
-QProgressBar {{ border: none; background: #E9E5F8; height: 6px; border-radius: 3px; }}
+QProgressBar {{ border: none; background: #E8F0FE; height: 6px; border-radius: 3px; }}
 QProgressBar::chunk {{ background: {GRAD}; border-radius: 3px; }}
 QStatusBar {{ background: {SURFACE}; color: {MUTED}; border-top: 1px solid {LINE}; }}
 QScrollBar:vertical {{ background: transparent; width: 10px; margin: 2px; }}
-QScrollBar::handle:vertical {{ background: #D3CCEE; border-radius: 4px; min-height: 40px; }}
+QScrollBar::handle:vertical {{ background: #DADCE0; border-radius: 4px; min-height: 40px; }}
 QScrollBar::handle:vertical:hover {{ background: {ACCENT}; }}
 QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::sub-page {{ background: none; height: 0; }}
 QSplitter::handle {{ background: transparent; }}
@@ -241,7 +241,7 @@ class Checker(DragSource, QLabel):
                 s = 12
                 for y in range(0, r.height(), s):
                     for x in range(0, r.width(), s):
-                        p.fillRect(x, y, s, s, QColor("#FFFFFF") if (x // s + y // s) % 2 else QColor("#ECE8F7"))
+                        p.fillRect(x, y, s, s, QColor("#FFFFFF") if (x // s + y // s) % 2 else QColor("#EEEEEE"))
             else:
                 p.fillRect(r, QColor(*self.bg))
         if self._img is not None and not self._img.isNull():
@@ -315,8 +315,8 @@ class Tile(DragSource, QFrame):
     undo = Signal(object)
     context = Signal(object, QPoint)
 
-    SIZE = 280
-    RADIUS = 16
+    SIZE = 340          # بەرزی ڕیزەکان (وەک گۆگڵ: وێنە بە ڕێژەی خۆی، بێ بڕین)
+    RADIUS = 10
 
     def __init__(self, r: core.ImageResult, state: TileState):
         super().__init__()
@@ -389,89 +389,89 @@ class Tile(DragSource, QFrame):
             self.update()
         return super().event(e)
 
+    def aspect(self) -> float:
+        st = self.state
+        if st.status == "DONE" and st.size[1]:
+            return max(0.5, min(2.2, st.size[0] / st.size[1]))
+        if self.r.width and self.r.height:
+            return max(0.5, min(2.2, self.r.width / self.r.height))
+        if self.pm is not None and not self.pm.isNull() and self.pm.height():
+            return max(0.5, min(2.2, self.pm.width() / self.pm.height()))
+        return 1.0
+
     def paintEvent(self, _):
         from PySide6.QtGui import QPainterPath, QLinearGradient, QPen, QFont
-        S, R = self.SIZE, self.RADIUS
+        W, H, R = self.width(), self.height(), self.RADIUS
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.SmoothPixmapTransform)
         path = QPainterPath()
-        path.addRoundedRect(1, 1, S - 2, S - 2, R, R)
+        path.addRoundedRect(0, 0, W, H, R, R)
         p.setClipPath(path)
         st = self.state
         if st.status == "DONE" and st.thumb is not None:
-            c = 14
-            for y in range(0, S, c):
-                for x in range(0, S, c):
-                    p.fillRect(x, y, c, c, QColor("#FFFFFF") if (x // c + y // c) % 2 else QColor("#ECE8F7"))
+            c = 12
+            for y in range(0, H, c):
+                for x in range(0, W, c):
+                    p.fillRect(x, y, c, c, QColor("#FFFFFF") if (x // c + y // c) % 2 else QColor("#EEEEEE"))
             img = st.thumb
-            sz = img.size().scaled(S - 16, S - 34, Qt.KeepAspectRatio)
-            p.drawImage(QRect((S - sz.width()) // 2, 8 + (S - 34 - sz.height()) // 2, sz.width(), sz.height()), img)
+            sz = img.size().scaled(W, H, Qt.KeepAspectRatio)
+            p.drawImage(QRect((W - sz.width()) // 2, (H - sz.height()) // 2, sz.width(), sz.height()), img)
         elif self.pm is not None and not self.pm.isNull():
-            pm = self.pm.scaled(S, S, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
-            p.drawPixmap(0, 0, pm, (pm.width() - S) // 2, (pm.height() - S) // 2, S, S)
+            pm = self.pm.scaled(W, H, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+            p.drawPixmap(0, 0, pm, (pm.width() - W) // 2, (pm.height() - H) // 2, W, H)
         else:
-            g = QLinearGradient(0, 0, S, S)
-            g.setColorAt(0, QColor("#EFEBFF"))
-            g.setColorAt(1, QColor("#FCEAF3"))
-            p.fillRect(0, 0, S, S, g)
-            p.setPen(QColor(MUTED))
-            p.drawText(QRect(0, 0, S, S), Qt.AlignCenter, "…")
-        # شریتی خوارەوە (بۆ وێنەی تەواوبوو: شریتی سپی)
-        if st.status == "DONE":
-            p.fillRect(0, S - 30, S, 30, QColor(255, 255, 255, 235))
-        else:
-            g = QLinearGradient(0, S - 60, 0, S)
-            g.setColorAt(0, QColor(0, 0, 0, 0))
-            g.setColorAt(1, QColor(8, 8, 18, 215))
-            p.fillRect(0, S - 60, S, 60, g)
+            p.fillRect(0, 0, W, H, QColor("#F1F3F4"))
         f = QFont(self.font())
-        f.setPointSizeF(8.8)
+        f.setPointSizeF(8.6)
         f.setBold(True)
         p.setFont(f)
+        # نیشانەی قەبارە (وەک گۆگڵ: لە گۆشەی خوارەوە، کاتێک ماوس لەسەرە)
         if st.status == "DONE":
-            p.setPen(QColor(OK))
-            label = f"✓ {dims(st.size[0], st.size[1])}" + ("  ✨ HD" if st.enhanced else "  بێ باکگراوند")
-        elif self.r.width and self.r.height:
-            p.setPen(QColor("#E6E8FF"))
-            label = f"{dims(self.r.width, self.r.height)}"
+            label = f"✓ {dims(st.size[0], st.size[1])}" + ("  HD" if st.enhanced else "")
+            col = QColor(OK)
+        elif self.hover and self.r.width and self.r.height:
+            label, col = dims(self.r.width, self.r.height), QColor("white")
         else:
             label = ""
         if label:
-            p.drawText(QRect(10, S - 25, S - 20, 20), Qt.AlignVCenter | Qt.AlignLeft, label)
+            fm = p.fontMetrics()
+            tw = fm.horizontalAdvance(label) + 14
+            box = QRect(W - tw - 8, H - 28, tw, 20)
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(255, 255, 255, 235) if st.status == "DONE" else QColor(0, 0, 0, 150))
+            p.drawRoundedRect(box, 10, 10)
+            p.setPen(col)
+            p.drawText(box, Qt.AlignCenter, label)
         # دۆخی کارکردن
         if st.status in ("WAITING", "WORKING", "ERROR"):
-            p.fillRect(0, 0, S, S, QColor(10, 10, 24, 175 if st.status != "ERROR" else 140))
+            p.fillRect(0, 0, W, H, QColor(255, 255, 255, 205))
+            cy = H // 2 - 34
             if st.status == "WORKING":
                 ang = int((time.time() * 360) % 360) * 16
-                pen = QPen(QColor(ACCENT2), 5)
+                pen = QPen(QColor(ACCENT), 4)
                 pen.setCapStyle(Qt.RoundCap)
                 p.setPen(pen)
-                p.drawArc(QRect(S // 2 - 24, S // 2 - 46, 48, 48), -ang, 100 * 16)
-                pen.setColor(QColor(ACCENT))
-                p.setPen(pen)
-                p.drawArc(QRect(S // 2 - 24, S // 2 - 46, 48, 48), -ang + 180 * 16, 100 * 16)
-            p.setPen(QColor("white") if st.status != "ERROR" else QColor(ERR))
+                p.drawArc(QRect(W // 2 - 20, cy, 40, 40), -ang, 270 * 16)
+            p.setPen(QColor(TEXT) if st.status != "ERROR" else QColor(ERR))
             f.setPointSizeF(9)
+            f.setBold(False)
             p.setFont(f)
             txt = {"WAITING": "⏳ لە ڕیزدایە...", "WORKING": st.msg or "کار دەکات...",
                    "ERROR": "✗ " + (st.msg or "هەڵە")}[st.status]
-            p.drawText(QRect(10, S // 2 + 8, S - 20, 60), Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap, txt)
+            p.drawText(QRect(10, cy + 48, W - 20, 60), Qt.AlignHCenter | Qt.AlignTop | Qt.TextWordWrap, txt)
         p.setClipping(False)
         # چوارچێوە
         if self.sel or self.hover or st.status == "DONE":
-            gp = QLinearGradient(0, 0, S, S)
-            gp.setColorAt(0, QColor(ACCENT))
-            gp.setColorAt(1, QColor(ACCENT2))
-            w = 3 if self.sel else 2
-            col = QBrush(gp) if (self.sel or self.hover) else QBrush(QColor(OK))
-            p.setPen(QPen(col, w))
+            w_ = 3 if self.sel else 2
+            col = QColor(ACCENT) if (self.sel or self.hover) else QColor(OK)
+            p.setPen(QPen(col, w_))
             p.setBrush(Qt.NoBrush)
-            p.drawRoundedRect(QRect(1, 1, S - 2, S - 2), R, R)
+            p.drawRoundedRect(QRect(1, 1, W - 2, H - 2), R, R)
         if self.select_mode:
-            cr = QRect(S - 36, 8, 28, 28)
+            cr = QRect(W - 36, 8, 28, 28)
             p.setPen(QPen(QColor("white"), 2))
-            p.setBrush(QBrush(QColor(ACCENT2)) if self.sel else QBrush(QColor(0, 0, 0, 110)))
+            p.setBrush(QBrush(QColor(ACCENT)) if self.sel else QBrush(QColor(0, 0, 0, 110)))
             p.drawEllipse(cr)
             if self.sel:
                 p.drawText(cr, Qt.AlignCenter, "✓")
@@ -537,6 +537,66 @@ class FlowGrid(QWidget):
             self.grid.removeWidget(w)
         for i, w in enumerate(self.items):
             self.grid.addWidget(w, i // cols, i % cols)
+
+
+class JustifiedGrid(QWidget):
+    """تۆڕی وێنە وەک گۆگڵ: هەر ڕیزێک پانی تەواو پڕ دەکات، وێنەکان بە ڕێژەی خۆیان (بێ بڕین)."""
+    GAP = 10
+
+    def __init__(self):
+        super().__init__()
+        self.items: list[QWidget] = []
+        self._w = 800
+        self._h = 300
+
+    def clear(self):
+        for w in self.items:
+            w.setParent(None)
+            w.deleteLater()
+        self.items = []
+        self.setMinimumHeight(0)
+
+    def add(self, w: QWidget):
+        w.setParent(self)
+        w.show()
+        self.items.append(w)
+        self._place()
+
+    def relayout(self, width: int, cell: int):
+        self._w, self._h = max(200, width), cell
+        self._place()
+
+    def _place(self):
+        W, H, G = self._w, self._h, self.GAP
+        y = 0
+        row: list = []
+        def flush(row, last=False):
+            nonlocal y
+            asp = [t.aspect() for t in row]
+            total = sum(asp)
+            h = (W - G * (len(row) - 1)) / total if total else H
+            if last and h > H * 1.15:
+                h = H
+            h = int(min(h, H * 1.6))
+            x = W  # ڕاست بۆ چەپ
+            for t, a in zip(row, asp):
+                tw = max(60, int(a * h))
+                x -= tw
+                t.setFixedSize(tw, h)
+                t.move(max(0, x), y)
+                t.refresh()
+                x -= G
+            y += h + G
+        acc = 0.0
+        for t in self.items:
+            row.append(t)
+            acc += t.aspect()
+            if acc * H + G * (len(row) - 1) >= W:
+                flush(row)
+                row, acc = [], 0.0
+        if row:
+            flush(row, last=True)
+        self.setMinimumHeight(y)
 
 
 # ───────────────────────── کاری بەکۆمەڵ ─────────────────────────
@@ -611,8 +671,8 @@ class SettingsDialog(QDialog):
         self.person.setChecked(s.person_only)
         self.focus = QCheckBox("تەنها کەسی سەرەکی (فۆکس) — ئەگەر چەند کەس هەبن")
         self.focus.setChecked(s.focus_only)
-        self.enh = QCheckBox("بەرزکردنەوەی کوالیتی دوای لابردن — وێنەی بچووک (کەمتر لە 1800px) ×2 بە AI ڕوون دەکرێتەوە")
-        self.enh.setChecked(s.auto_enhance)
+        self.enh = QCheckBox("بەرزکردنەوەی کوالیتی لەگەڵ لابردن (×2 بە AI) — بە شێوەی بنەڕەت کوژاوەیە")
+        self.enh.setChecked(s.enhance_after_cut)
         v.addWidget(self.person)
         v.addWidget(self.focus)
         v.addWidget(self.enh)
@@ -663,7 +723,7 @@ class SettingsDialog(QDialog):
         s = self.s
         s.person_only = self.person.isChecked()
         s.focus_only = self.focus.isChecked()
-        s.auto_enhance = self.enh.isChecked()
+        s.enhance_after_cut = self.enh.isChecked()
         s.removebg_key = self.rb_key.text().strip()
         s.engine = "removebg" if self.r_rb.isChecked() and s.removebg_key else "isnet"
         s.serper_key = self.serper.text().strip()
@@ -746,14 +806,14 @@ class MainWindow(QMainWindow):
         root.setObjectName("root")
         self.setCentralWidget(root)
         rv = QVBoxLayout(root)
-        rv.setContentsMargins(18, 14, 18, 10)
+        rv.setContentsMargins(0, 0, 0, 6)
         rv.setSpacing(12)
 
         # ── سەردێڕ: ناو + گەڕان ──
         header = QFrame()
         header.setObjectName("header")
         hl = QHBoxLayout(header)
-        hl.setContentsMargins(18, 14, 18, 14)
+        hl.setContentsMargins(24, 14, 24, 14)
         hl.setSpacing(12)
         logo = QLabel()
         lp = logo_path()
@@ -761,7 +821,7 @@ class MainWindow(QMainWindow):
                        if lp else make_icon().pixmap(48, 48))
         logo.setFixedSize(54, 54)
         logo.setAlignment(Qt.AlignCenter)
-        logo.setStyleSheet("background: rgba(255,255,255,60); border: 2px solid rgba(255,255,255,170); border-radius: 15px;")
+        logo.setStyleSheet("background: transparent; border: none;")
         hl.addWidget(logo)
         tbox = QVBoxLayout()
         tbox.setSpacing(0)
@@ -778,10 +838,12 @@ class MainWindow(QMainWindow):
         self.q.returnPressed.connect(self.submit)
         self.q.setClearButtonEnabled(True)
         self.q.setMinimumHeight(46)
-        hl.addWidget(self.q, 1)
+        self.q.setMaximumWidth(720)
+        hl.addStretch(1)
+        hl.addWidget(self.q, 6)
         self.b_search = btn("گەڕان", True, self.submit)
         self.b_search.setMinimumHeight(46)
-        self.b_search.setMinimumWidth(110)
+        self.b_search.setFixedWidth(120)
         hl.addWidget(self.b_search)
         for text, tip, cb in (("🖼", "کردنەوەی وێنە لە کۆمپیوتەر (Ctrl+O)", self.open_files),
                               ("📋", "لکاندنی وێنە (Ctrl+V)", self.paste_image),
@@ -791,6 +853,7 @@ class MainWindow(QMainWindow):
             b.setFixedSize(46, 46)
             b.setStyleSheet("font-size:14pt;padding:0;")
             hl.addWidget(b)
+        hl.insertStretch(hl.indexOf(self.b_search) + 1, 1)
         rv.addWidget(header)
         self.top_header = header
 
@@ -819,7 +882,7 @@ class MainWindow(QMainWindow):
         work_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         work = QWidget()
         self.work_v = QVBoxLayout(work)
-        self.work_v.setContentsMargins(0, 0, 8, 4)
+        self.work_v.setContentsMargins(24, 10, 24, 4)
         self.work_v.setSpacing(12)
         work_scroll.setWidget(work)
         self.work_scroll = work_scroll
@@ -958,7 +1021,7 @@ class MainWindow(QMainWindow):
         res_panel = QFrame()
         res_panel.setObjectName("panel")
         rp = QVBoxLayout(res_panel)
-        rp.setContentsMargins(16, 12, 8, 8)
+        rp.setContentsMargins(24, 8, 16, 8)
         self.res_head = QLabel("")
         self.res_head.setObjectName("cardTitle")
         self.res_head.setWordWrap(True)
@@ -982,7 +1045,7 @@ class MainWindow(QMainWindow):
         gw = QWidget()
         gv = QVBoxLayout(gw)
         gv.setContentsMargins(0, 0, 0, 0)
-        self.grid = FlowGrid()
+        self.grid = JustifiedGrid()
         gv.addWidget(self.grid)
         self.b_more = btn("وێنەی زیاتر", cb=self.load_more)
         gv.addWidget(self.b_more)
@@ -1124,6 +1187,8 @@ class MainWindow(QMainWindow):
         for t in self.grid.items:
             if t.r.thumb_url == url:
                 t.set_pixmap(pm)
+        if any(t.r.thumb_url == url and not (t.r.width and t.r.height) for t in self.grid.items):
+            self.grid._place()
 
     def _tile_clicked(self, r, ctrl):
         if self.select_mode or ctrl:
@@ -1213,6 +1278,8 @@ class MainWindow(QMainWindow):
     def _on_tile_changed(self, url: str):
         for t in self._tiles_for(url):
             t.refresh()
+        if self.tstate.get(url, TileState()).status in ("DONE", ""):
+            self.grid._place()
         working = any(st.status in ("WAITING", "WORKING") for st in self.tstate.values())
         if working and not self.spin.isActive():
             self.spin.start()
@@ -1232,7 +1299,7 @@ class MainWindow(QMainWindow):
         st.status, st.msg = "WAITING", ""
         self.tile_changed.emit(r.full_url)
         opts = self.cut_opts()
-        enhance = self.settings.auto_enhance
+        enhance = self.settings.enhance_after_cut
         self.inplace_pool.submit(self._inplace_job, r, st, opts, enhance)
 
     def inplace_all(self):
