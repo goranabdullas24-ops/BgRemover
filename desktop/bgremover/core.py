@@ -690,6 +690,8 @@ def refine(rgb: np.ndarray, raw: np.ndarray) -> np.ndarray:
     a = np.where((raw > 0.985) & (a > 0.5), 1.0, a)
     a = np.where(band < 0.01, 0.0, a)
     # لابردنی ڕووناکی/هالۆی دەوری کەسەکە: لێوار کەمێک بۆ ناوەوە (نیو-erosion) و تیژتر
+    if os.environ.get("SG_OLD_EDGE") == "1":
+        return np.clip((a - 0.03) / 0.94, 0, 1).astype(np.float32)
     a = 0.5 * a + 0.5 * nd.grey_erosion(a, size=(3, 3))
     return np.clip((a - 0.06) / 0.88, 0, 1).astype(np.float32)
 
@@ -768,7 +770,7 @@ def apply_alpha(src: Image.Image, alpha: np.ndarray) -> Image.Image:
     rgb_im = src.convert("RGB")
     rgb = np.asarray(rgb_im).copy()
     edge = (a > 0.004) & (a < 0.97)
-    if edge.any():
+    if edge.any() and os.environ.get("SG_OLD_EDGE") != "1":
         h, w = a.shape
         sc = min(1.0, 700 / max(h, w))
         sw, sh = max(1, round(w * sc)), max(1, round(h * sc))
