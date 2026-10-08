@@ -1,0 +1,112 @@
+10-08 20:17:23.036   429   429 V installd: DexInv: --- END '/data/app/~~IAGGLM8E5gfkibjArvhPqg==/krd.bgremover-bi_C1BJCEOO1o19tU_1WNA==/base.apk' (success) ---
+10-08 20:17:23.114   502   559 V BackupManagerService: [UserID:0] restoreAtInstall pkg=krd.bgremover token=1 restoreSet=0
+10-08 20:17:23.614  1534  1534 I MediaProvider: Invalidating LocalCallingIdentity cache for package krd.bgremover. Reason: package android.intent.action.PACKAGE_ADDED
+10-08 20:17:23.624  1576  1576 I GsaVoiceInteractionSrv: O received Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) }
+10-08 20:17:23.628   694   694 D AvrcpMediaPlayerList: Name of package changed: krd.bgremover
+10-08 20:17:24.254  1190  3855 W GCM     : Unexpected forwarded intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) }
+10-08 20:17:24.256  1190  2330 W GCM     : Unexpected forwarded intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) }
+10-08 20:17:24.394  1511  3897 I ChromeSync: [Sync,SyncIntentOperation] Handling the intent: Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 cmp=com.google.android.gms/.chimera.GmsIntentOperationService (has extras) }.
+10-08 20:17:24.411  1511  3897 I ChromeSync: [Persistence,AffiliationManager] One of affiliation or grouping data for android://q9W_iJNh-ordVhFU9Fi9NvtCEOVdJsCuQQuD6gFU0woxFndUb_VoM9qM8ojsJpL6eDKUgZ09VUoPfcqAtD_JQQ==@krd.bgremover/ was not found. Marking affiliation data as stale...
+10-08 20:17:24.999  3905  3905 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:17:25.019  3905  3905 I AndroidRuntime: Using default boot image
+10-08 20:17:25.019  3905  3905 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:17:25.466  3905  3905 D AndroidRuntime: Calling main entry com.android.commands.monkey.Monkey
+10-08 20:17:25.466  3905  3905 W Monkey  : args: [-p, krd.bgremover, -c, android.intent.category.LAUNCHER, 1]
+10-08 20:17:25.467  3905  3905 W Monkey  :  arg: "krd.bgremover"
+10-08 20:17:25.467  3905  3905 W Monkey  : data="krd.bgremover"
+10-08 20:17:25.540   502  3184 I ActivityTaskManager: START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10200000 cmp=krd.bgremover/.MainActivity} from uid 2000
+10-08 20:17:25.648   502   543 I ActivityManager: Start proc 3974:krd.bgremover/u0a167 for pre-top-activity {krd.bgremover/krd.bgremover.MainActivity}
+10-08 20:17:25.676  3905  3905 I AndroidRuntime: VM exiting with result code 0.
+10-08 20:17:25.836  3974  3974 W krd.bgremover: Unexpected CPU variant for X86 using defaults: x86_64
+10-08 20:17:27.968   502   541 D ArtManagerInternalImpl: /data/misc/iorapd/krd.bgremover/26/krd.bgremover.MainActivity/compiled_traces/compiled_trace.pb doesn't exist
+10-08 20:17:27.969   502   541 I ActivityTaskManager: Displayed krd.bgremover/.MainActivity: +1s279ms
+10-08 20:17:31.489  3974  4797 D ProfileInstaller: Installing profile for krd.bgremover
+10-08 20:17:32.759   502  1666 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.packageinstaller/com.android.packageinstaller.PackageInstalledReceiver
+10-08 20:17:32.759   502   542 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.gms/.games.chimera.GamesSystemBroadcastReceiverProxy
+10-08 20:17:32.759   502   542 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.gms/.gass.chimera.PackageChangeBroadcastReceiver
+10-08 20:17:32.759   502   542 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.gms/.chimera.GmsIntentOperationService$PersistentTrustedReceiver
+10-08 20:17:32.759   502   542 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.googlequicksearchbox/com.google.android.apps.gsa.googlequicksearchbox.GelStubAppWatcher
+10-08 20:17:32.759   502   542 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_ADDED dat=package:krd.bgremover flg=0x4000010 (has extras) } to com.google.android.ims/.receivers.RcsAutoStartReceiver
+10-08 20:17:41.193  5298  5298 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:17:41.201  5298  5298 I AndroidRuntime: Using default boot image
+10-08 20:17:41.201  5298  5298 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:17:41.395  5298  5298 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-08 20:17:42.518  5298  5298 D AndroidRuntime: Shutting down VM
+10-08 20:17:43.058  5317  5317 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:17:43.060  5317  5317 I AndroidRuntime: Using default boot image
+10-08 20:17:43.060  5317  5317 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:17:43.127  5317  5317 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-08 20:17:43.146  5317  5317 D AndroidRuntime: Shutting down VM
+10-08 20:17:43.259  1361  1361 I AndroidIME: AbstractIme.onActivate():84 LatinIme.onActivate() : EditorInfo = Package = krd.bgremover : Type = Text : Learning = Enable : Suggestion = Show : AutoCorrection = Enable : Microphone = Show : NoPersonalizedLearning = Disable : AutoStartVoiceInput = Disable, IncognitoMode = false
+10-08 20:17:45.649  5351  5351 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:17:45.651  5351  5351 I AndroidRuntime: Using default boot image
+10-08 20:17:45.651  5351  5351 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:17:45.801  5351  5351 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-08 20:17:46.042  5351  5351 D AndroidRuntime: Shutting down VM
+10-08 20:17:47.517  5397  5397 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:17:47.519  5397  5397 I AndroidRuntime: Using default boot image
+10-08 20:17:47.519  5397  5397 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:17:47.589  5397  5397 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-08 20:17:47.624  5397  5397 D AndroidRuntime: Shutting down VM
+10-08 20:17:49.125  5410  5410 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:17:49.127  5410  5410 I AndroidRuntime: Using default boot image
+10-08 20:17:49.127  5410  5410 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:17:49.190  5410  5410 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-08 20:17:49.204  5410  5410 D AndroidRuntime: Shutting down VM
+10-08 20:17:59.678  5457  5457 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:17:59.680  5457  5457 I AndroidRuntime: Using default boot image
+10-08 20:17:59.680  5457  5457 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:17:59.744  5457  5457 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-08 20:18:00.764  5457  5457 D AndroidRuntime: Shutting down VM
+10-08 20:18:11.240  5562  5562 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:18:11.242  5562  5562 I AndroidRuntime: Using default boot image
+10-08 20:18:11.242  5562  5562 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:18:11.305  5562  5562 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-08 20:18:12.330  5562  5562 D AndroidRuntime: Shutting down VM
+10-08 20:18:22.847  5584  5584 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:18:22.856  5584  5584 I AndroidRuntime: Using default boot image
+10-08 20:18:22.856  5584  5584 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:18:22.925  5584  5584 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-08 20:18:23.943  5584  5584 D AndroidRuntime: Shutting down VM
+10-08 20:18:34.523  5672  5672 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:18:34.532  5672  5672 I AndroidRuntime: Using default boot image
+10-08 20:18:34.532  5672  5672 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:18:34.564  3974  4001 I TetheringManager: registerTetheringEventCallback:krd.bgremover
+10-08 20:18:34.639  5672  5672 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-08 20:18:35.944  3974  3988 I krd.bgremover: NativeAlloc concurrent copying GC freed 318327(16MB) AllocSpace objects, 56(1500KB) LOS objects, 49% free, 13MB/26MB, paused 48us total 573.075ms
+10-08 20:18:36.026  5672  5672 D AndroidRuntime: Shutting down VM
+10-08 20:18:39.703  5775  5775 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:18:39.704  5775  5775 I AndroidRuntime: Using default boot image
+10-08 20:18:39.704  5775  5775 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:18:39.768  5775  5775 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-08 20:18:40.792  5775  5775 D AndroidRuntime: Shutting down VM
+10-08 20:18:41.292  5791  5791 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:18:41.293  5791  5791 I AndroidRuntime: Using default boot image
+10-08 20:18:41.294  5791  5791 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:18:41.356  5791  5791 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-08 20:18:41.364  5791  5791 D AndroidRuntime: Shutting down VM
+10-08 20:18:51.850  3974  5697 I krd.bgremover: Waiting for a blocking GC NativeAlloc
+10-08 20:18:51.855  3974  5697 I krd.bgremover: Starting a blocking GC NativeAlloc
+10-08 20:18:51.936  3974  5817 W GooglePlayServicesUtil: Google Play services out of date for krd.bgremover.  Requires 203400000 but found 201817023
+10-08 20:18:55.536  3974  5817 W GooglePlayServicesUtil: Google Play services out of date for krd.bgremover.  Requires 203400000 but found 201817023
+10-08 20:18:55.688  3974  5817 W GooglePlayServicesUtil: Google Play services out of date for krd.bgremover.  Requires 203400000 but found 201817023
+10-08 20:19:02.024  5842  5842 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:19:02.038  5842  5842 I AndroidRuntime: Using default boot image
+10-08 20:19:02.038  5842  5842 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:19:02.361  5842  5842 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-08 20:19:03.595  5842  5842 D AndroidRuntime: Shutting down VM
+10-08 20:19:04.398  5862  5862 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:19:04.405  5862  5862 I AndroidRuntime: Using default boot image
+10-08 20:19:04.405  5862  5862 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:19:04.587  5862  5862 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-08 20:19:04.604  5862  5862 D AndroidRuntime: Shutting down VM
+10-08 20:19:13.263  5882  5882 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:19:13.269  5882  5882 I AndroidRuntime: Using default boot image
+10-08 20:19:13.269  5882  5882 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:19:13.436  5882  5882 D AndroidRuntime: Calling main entry com.android.commands.uiautomator.Launcher
+10-08 20:19:14.501  5882  5882 D AndroidRuntime: Shutting down VM
+10-08 20:19:14.974  5898  5898 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+10-08 20:19:14.975  5898  5898 I AndroidRuntime: Using default boot image
+10-08 20:19:14.975  5898  5898 I AndroidRuntime: Leaving lock profiling enabled
+10-08 20:19:15.040  5898  5898 D AndroidRuntime: Calling main entry com.android.commands.input.Input
+10-08 20:19:15.365  5898  5898 D AndroidRuntime: Shutting down VM
