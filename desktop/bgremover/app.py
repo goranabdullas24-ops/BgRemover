@@ -1146,7 +1146,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle(f"{APP_TITLE} — گەڕان و لابردنی باکگراوند")
+        self.setWindowTitle(f"{APP_TITLE} {core.VERSION} — گەڕان و لابردنی باکگراوند")
         self.setLayoutDirection(Qt.RightToLeft)
         self.resize(1400, 900)
         self.settings = core.Settings.load()
@@ -1289,7 +1289,7 @@ class MainWindow(QMainWindow):
         crow.addStretch(1)
         hv.addLayout(crow)
         hv.addSpacing(18)
-        dnd = QLabel("یان وێنەیەک ڕابکێشە ناو ئەم پەنجەرەیە")
+        dnd = QLabel(f"یان وێنەیەک ڕابکێشە ناو ئەم پەنجەرەیە   ·   وەشانی {core.VERSION}")
         dnd.setObjectName("muted")
         dnd.setAlignment(Qt.AlignCenter)
         hv.addWidget(dnd)

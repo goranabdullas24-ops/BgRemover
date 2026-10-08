@@ -39,7 +39,7 @@ except Exception:  # noqa: BLE001
     pass
 
 APP_NAME = "BgRemover"
-VERSION = "4.0"
+VERSION = "4.1"
 
 # ───────────────────────── شوێنی فایلەکان ─────────────────────────
 

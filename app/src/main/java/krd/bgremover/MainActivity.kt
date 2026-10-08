@@ -234,7 +234,9 @@ private fun HomeScreen(
         Text("وێنەکان لە شوێنی خۆیان باکگراوندیان لادەبرێت — کلیک لە هەر وێنەیەک بکە بۆ بەراورد و پاشەکەوت",
             color = Muted, style = MaterialTheme.typography.bodySmall,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-        Spacer(Modifier.height(30.dp))
+        Spacer(Modifier.height(10.dp))
+        Text("وەشانی ${BuildConfig.VERSION_NAME}", color = Muted, style = MaterialTheme.typography.labelSmall)
+        Spacer(Modifier.height(24.dp))
     }
 }
 

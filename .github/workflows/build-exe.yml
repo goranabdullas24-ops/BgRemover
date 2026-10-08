@@ -114,8 +114,8 @@ jobs:
           $setup = Get-ChildItem dist\BgRemover-Setup-*.exe | Select-Object -First 1
           $p = Start-Process -FilePath $setup.FullName -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/CURRENTUSER","/NORESTART" -Wait -PassThru
           "setup exit: $($p.ExitCode)"
-          $exe = Join-Path $env:LOCALAPPDATA "Programs\BgRemover\BgRemover.exe"
-          if (-not (Test-Path $exe)) { "::warning title=setup::installed exe not found"; exit 1 }
+          $exe = @("$env:ProgramFiles\BgRemover\BgRemover.exe", "${env:ProgramFiles(x86)}\BgRemover\BgRemover.exe", (Join-Path $env:LOCALAPPDATA "Programs\BgRemover\BgRemover.exe")) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $exe) { "::warning title=setup::installed exe not found"; exit 1 }
           Remove-Item selftest.log -ErrorAction SilentlyContinue
           $out = Join-Path (Get-Location) "setup_out.png"
           $q = Start-Process -FilePath $exe -ArgumentList "--selftest","test.jpg",$out -PassThru
@@ -176,13 +176,13 @@ jobs:
       - name: Test online setup (after release is published)
         timeout-minutes: 10
         run: |
-          $u = Join-Path $env:LOCALAPPDATA "Programs\BgRemover\unins000.exe"
-          if (Test-Path $u) { Start-Process $u -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES" -Wait; Start-Sleep 5 }
+          $u = @("$env:ProgramFiles\BgRemover\unins000.exe", "${env:ProgramFiles(x86)}\BgRemover\unins000.exe", (Join-Path $env:LOCALAPPDATA "Programs\BgRemover\unins000.exe")) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if ($u) { Start-Process $u -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES" -Wait; Start-Sleep 5 }
           $setup = Get-ChildItem dist\BgRemover-Setup-Online-*.exe | Select-Object -First 1
           $p = Start-Process -FilePath $setup.FullName -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/CURRENTUSER","/NORESTART","/LOG=web.log" -Wait -PassThru
           "web setup exit: $($p.ExitCode)"
-          $exe = Join-Path $env:LOCALAPPDATA "Programs\BgRemover\BgRemover.exe"
-          if (-not (Test-Path $exe)) { Get-Content web.log -Tail 30 | ForEach-Object { "::warning title=websetup::$_" }; exit 1 }
+          $exe = @("$env:ProgramFiles\BgRemover\BgRemover.exe", "${env:ProgramFiles(x86)}\BgRemover\BgRemover.exe", (Join-Path $env:LOCALAPPDATA "Programs\BgRemover\BgRemover.exe")) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $exe) { Get-Content web.log -Tail 30 | ForEach-Object { "::warning title=websetup::$_" }; exit 1 }
           Remove-Item selftest.log -ErrorAction SilentlyContinue
           $q = Start-Process -FilePath $exe -ArgumentList "--selftest","test.jpg",(Join-Path (Get-Location) "web_out.png") -PassThru
           if (-not $q.WaitForExit(300000)) { Stop-Process -Id $q.Id -Force }

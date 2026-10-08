@@ -12,8 +12,8 @@ android {
         applicationId = "krd.bgremover"
         minSdk = 29
         targetSdk = 35
-        versionCode = 26
-        versionName = "7.0"
+        versionCode = 27
+        versionName = "7.1"
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
             if (System.getenv("DIAG_X86") == "1") abiFilters += "x86_64"   // تەنها بۆ تاقیکردنەوە لە emulator
@@ -22,13 +22,23 @@ android {
         buildConfigField("String", "DEFAULT_SERPER_KEY", "\"${System.getenv("SERPER_KEY") ?: ""}\"")
     }
 
+    // واژووی جێگیر: هەموو وەشانەکان بە هەمان کلیل واژوو دەکرێن، بۆیە وەشانی نوێ
+    // ڕاستەوخۆ لەسەر وەشانی کۆن دادەمەزرێت (بێ ئەوەی پێویست بە سڕینەوە بێت)
+    signingConfigs {
+        create("sg") {
+            storeFile = file("sgsearch.jks")
+            storePassword = "sgsearch123"
+            keyAlias = "sgsearch"
+            keyPassword = "sgsearch123"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // واژووی debug بۆ ئەوەی ڕاستەوخۆ دابمەزرێت
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("sg")
         }
     }
     compileOptions {
