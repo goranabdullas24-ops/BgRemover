@@ -29,7 +29,7 @@ for q, k in [("Lionel Messi", ""), ("بافڵ تاڵەبانی", ""), ("white ti
     msgs = []
     w._on_dl_done_orig = w._on_dl_done
     for t in list(w.grid.items):
-        QTest.mouseClick(t.b_dl, Qt.LeftButton)
+        w.download_one(t.r)
     t0 = time.time()
     while w.downloading and time.time() - t0 < 180:
         app.processEvents(); time.sleep(0.1)
