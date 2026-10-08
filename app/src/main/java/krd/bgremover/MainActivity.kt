@@ -451,10 +451,10 @@ private fun ViewerScreen(vm: MainViewModel, r: ImageResult) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { vm.viewerUpscale(2) }, enabled = vm.viewCut != null && vm.viewBusy == null,
-                    modifier = Modifier.weight(1f)) { Text("Upscale ×2") }
-                OutlinedButton(onClick = { vm.viewerUpscale(4) }, enabled = vm.viewCut != null && vm.viewBusy == null) { Text("×4") }
+                    modifier = Modifier.weight(1f)) { Text("Upscale ×2", maxLines = 1, softWrap = false) }
+                OutlinedButton(onClick = { vm.viewerUpscale(4) }, enabled = vm.viewCut != null && vm.viewBusy == null) { Text("×4", maxLines = 1) }
                 OutlinedButton(onClick = vm::viewerSaveOriginal) {
-                    Icon(Icons.Default.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("ئەسڵی")
+                    Icon(Icons.Default.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("ئەسڵی", maxLines = 1)
                 }
             }
         }
