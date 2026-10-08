@@ -24,7 +24,8 @@ adb shell input tap $E; sleep 2
 adb shell input text "lionel%smessi"; sleep 1
 adb shell input keyevent 111; sleep 1
 S=$(center ui1 text "گەڕان"); adb shell input tap $S
-sleep 25
+for i in $(seq 1 12); do sleep 10; dump ui2; grep -q 'content-desc="لابردنی باکگراوند لێرە"' diag/ui2.xml && break; done
+sleep 3
 adb exec-out screencap -p > diag/2_results.png
 dump ui2
 U=$(center ui2 text "لابردنی باکگراوند لێرە"); echo "inplace at $U"
