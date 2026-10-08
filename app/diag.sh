@@ -22,7 +22,8 @@ dump ui1
 E=$(center ui1 edit x)
 adb shell input tap $E; sleep 2
 adb shell input text "lionel%smessi"; sleep 1
-adb shell input keyevent 66
+adb shell input keyevent 111; sleep 1
+S=$(center ui1 text "گەڕان"); adb shell input tap $S
 sleep 25
 adb exec-out screencap -p > diag/2_results.png
 dump ui2
