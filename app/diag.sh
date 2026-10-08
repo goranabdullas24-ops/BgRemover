@@ -6,7 +6,7 @@ adb install -r "$APK"
 adb logcat -c
 adb shell monkey -p krd.bgremover -c android.intent.category.LAUNCHER 1
 sleep 15
-adb exec-out screencap -p > diag/1_start.png
+adb exec-out screencap -p > diag/1_home.png
 dump() { adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml diag/$1.xml >/dev/null; }
 center() { python3 - "$1" "$2" "$3" <<'PY'
 import re,sys
@@ -19,19 +19,25 @@ for m in re.finditer(r'<node [^>]*>',x):
 PY
 }
 dump ui1
-E=$(center ui1 edit x); S=$(center ui1 text "گەڕان و داگرتنی وێنە")
+E=$(center ui1 edit x)
 adb shell input tap $E; sleep 2
 adb shell input text "lionel%smessi"; sleep 1
-adb shell input keyevent 111; sleep 1
-adb shell input tap $S
+adb shell input keyevent 66
 sleep 25
 adb exec-out screencap -p > diag/2_results.png
-adb shell input swipe 160 500 160 200 400; sleep 2
-dump ui2; adb exec-out screencap -p > diag/2b.png
+dump ui2
 U=$(center ui2 text "لابردنی باکگراوند لێرە"); echo "inplace at $U"
 adb shell input tap $U
-for i in $(seq 1 10); do sleep 30; adb exec-out screencap -p > diag/3_in_$i.png; dump ui3; grep -q "HD\|✓" diag/ui3.xml && break; done
-adb exec-out screencap -p > diag/4_final.png
+for i in $(seq 1 8); do sleep 20; dump ui3; grep -q 'content-desc="پاشەکەوت"' diag/ui3.xml && break; done
+adb exec-out screencap -p > diag/3_done.png
+read X Y <<< "$U"
+adb shell input tap $X $((Y-60))
+sleep 8
+adb exec-out screencap -p > diag/4_viewer.png
+dump ui4
+adb shell input swipe 100 300 260 300 300
+sleep 2
+adb exec-out screencap -p > diag/5_viewer_slide.png
 adb logcat -d > diag/logcat.txt
 grep -E "krd.bgremover|AndroidRuntime|FATAL|System.err" diag/logcat.txt | tail -200 > diag/logcat_short.txt
 true
